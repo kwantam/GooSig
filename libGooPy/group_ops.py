@@ -14,6 +14,9 @@ if sys.version_info[0] == 2:
     range = xrange          # pylint: disable=redefined-builtin,undefined-variable
 
 class RSAGroupOps(object):
+    # NOTE you should use an RSA modulus whose factorization is unknown!
+    #      In other words, *don't* just generate a modulus! defs.py provides
+    #      a few candidates for you to try.
     def __init__(self, Gdesc, modbits=None, prng=None):
         self.n = Gdesc.modulus
         self.nOver2 = self.n // 2

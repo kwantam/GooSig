@@ -1,0 +1,122 @@
+- Let G be a group of unknown order.
+
+- Let g,h in G be two generators with an unknown discrete log relation.
+
+- Let n = p*q be an RSA modulus (unrelated to the group G)
+
+- let s, s1 be random 2048-bit integers.
+
+* public data:
+    (1) C1 = g^n h^s in G,
+    (2) a prime 2 ≤ t ≤ 1000  s.t. t is a quadratic residue mod n,
+    (3) C2 = g^w h^(s1) in G  where w^2 = t mod n (i.e. a commitment to sqrt(t) mod n).
+
+* private data:   n, w, s, s1
+
+### ZKPK ###
+
+Goal: ZKPK for (n, w, s, s1) s.t.
+    C1 = g^n h^s in G
+    C2 = g^w h^(s1) in G
+    w^2 = t mod n.
+
+The ZKPK works by proving knowledge of seven integers
+    w, w2, s1, a, an, s1w, sa
+satisfying:
+    C2 = g^w h^(s1)
+    g^(w2) h^(s1w) = C2^w
+    g^(an) h^(sa) = C1^a
+    w2 = t + an
+
+Protocol:
+* [PS1] Prover does the following:
+    (1) compute integer  a   s.t.  w^2 = t + a*n   (i.e., a = (w^2-t)/n)
+
+    (2) choose seven random 2048-bit integers   r_w, r_w2, r_s1, r_a, r_an, r_s1w, r_sa
+
+    (3) compute
+            A = g^(r_w)  h^(r_s1)
+            B = g^(r_w2) h^(r_s1w) / C2^(r_w)
+            C = g^(r_an) h^(r_sa)  / C1^(r_a)
+            D = r_w2 - r_an   in the integers
+
+    (4) send A. B, C, D to the verifier
+
+* [VS1] Verifier does the following:
+    (1) choose a random challenge chal in {0,1}^128
+
+    (2) choose a random prime ell in {0,1}^128
+
+* [PS2] Prover does the following:
+    (1) compute the integer vector
+            z = chal*(w, w2, s1, a, an, s1w, sa) + (r_w, r_w2, r_s1, r_a, r_an, r_s1w, r_sa)  in Z^7
+                    let (z_w, z_w2, z_s1, z_a, z_an, z_s1w, z_sa) = z
+
+    (2) compute  (here  x // y  is the integer quotient of x divided by y)
+            Aq = g^(z_w  // ell)  h^(z_s1  // ell)
+            Bq = g^(z_w2 // ell)  h^(z_s1w // ell)  /  C2^(z_w // ell)
+            Cq = g^(z_an // ell)  h^(z_sa  // ell)  /  C1^(z_a // ell)
+            Dq = (z_w2 - z_an) // \ell   in the integers
+
+    (3) send
+            z' = (z mod ell) = (z_w mod ell, z_w2 mod ell, ..., z_sa mod ell) \in Z^7/ell
+                    let (z'_w, z'_w2, ..., z'_sa) = z'
+            (Aq, Bq, Cq, Dq) \in G^3 \times Z
+
+* [VS2] Verifier accepts iff
+            Aq^ell  g^(z'_w)   h^(z'_s1)              = C2^(chal) * A
+            Bq^ell  g^(z'_w2)  h^(z'_s1w) / C2^(z'_w) = B
+            Cq^ell  g^(z'_an)  h^(z'_sa)  / C1^(z'_a) = C
+            Dq*ell + ((z'_w2 - z'_an) mod ell) = t*chal + D  in the integers
+
+
+### Signature ###
+
+We now convert the above ZKPK into a signature using the Fiat-Shamir heuristic.
+
+The public input to the signer is (G, g, h, C1) and a message M.
+The private input to the signer is (p, q, s).
+
+The public input to the verifier is (G, g, h, C1, C2, t), a message M, and a signature.
+
+Protocol:
+* Signer does the following:
+    (1) generates t, w, a, s1, C2 per their definitions, above.
+
+    (2) Computes A, B, C, D as described in [PS1], above.
+
+    (3) Computes
+            PRNG_Key = Hash(G, g, h, C1, C2, t, A, B, C, D, M)
+
+    (4) Uses a PRNG seeded with PRNG_Key to generate chal and ell as described in [VS1].
+
+    (5) Computes Aq, Bq, Cq, Dq, z' as described in [PS2], above.
+
+    (6) Outputs public values (C2, t) and signature (chal, ell, Aq, Bq, Cq, Dq, z')
+
+* Verifier does the following:
+    (1) Computes
+            A = Aq^ell g^(z'_w)  h^(z'_s1)  / C2^(chal)
+            B = Bq^ell g^(z'_w2) h^(z'_s1w) / C2^(z'_w)
+            C = Cq^ell g^(z'_an) h^(z'_sa)  / C1^(z'_a)
+            D = Dq * ell + ((z'_w2 - z'_an) mod ell) - t * chal
+            PRNG_key = Hash(G, g, h, C1, C2, t, A, B, C, D, M)
+
+    (2) Uses a PRNG seeded with PRNG_Key to generate chal' and ell' as described in [VS1].
+
+    (3) Accepts iff chal' == chal and ell' == ell.
+
+### Comments ###
+
+1. There is a seemingly simpler method to prove that one knows the factorization of
+   n, namely, prove that one knows p such that p divides n.
+
+   That is, instead of committing to "w" we would commit to "p" and then prove that
+   the committed value divides n. But we would also need to prove that the committed
+   factor is not one of {1, -1, n, -n}, and that will result in a longer proof.
+
+2. RSAGroupOps implements the quotient group (Z/n)/{1,-1}, representing elements as
+   |x| = min(x, n - x). This is because the proof method requires that no one knows
+   an element of low order other than the identity in the group of unknown order.
+   But for Z/n, -1 is such an element. By quotienting out {1,-1}, -1 becomes the
+   identity (since min(n - 1, (n + 1) mod n) == 1).
