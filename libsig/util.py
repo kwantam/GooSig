@@ -2,7 +2,6 @@
 #
 # (C) 2018 Riad S. Wahby <rsw@cs.stanford.edu>
 
-import hashlib
 import math
 import random
 import sys
@@ -171,7 +170,10 @@ def is_prime_lucas(n, nreps):
     return True
 
 # Rabin-Miller
-def is_prime_rm(n, nreps):
+def is_prime_rm(n, nreps, rng):
+    if rng is None:
+        rng = rand
+
     if n < 7:
         if n in (3, 5):
             return True
@@ -180,7 +182,7 @@ def is_prime_rm(n, nreps):
     (d, r) = factor_twos(n - 1)
 
     for _ in range(0, nreps):
-        a = int(rand.randint(2, n - 2))
+        a = int(rng.randint(2, n - 2))
         x = pow(a, d, n)
 
         if x in (1, n-1):
@@ -200,8 +202,9 @@ def is_prime_rm(n, nreps):
 
     return True
 
-def is_prime(n, nreps=8):
-    return is_prime_rm(n, 16 * nreps) and is_prime_lucas(n, nreps)
+# Baillie-PSW primality test (default #reps should be massive overkill)
+def is_prime(n, nreps=8, rng=None):
+    return is_prime_rm(n, 16 * nreps, rng) and is_prime_lucas(n, nreps)
 
 # Tonelli-Shanks
 def sqrt_modp(n, p):
@@ -263,49 +266,10 @@ def sqrt_modn(x, p, q):
 
     return (sqrtQ * mP * p + sqrtP * mQ * q) % (p * q)
 
-def random_prime(nbits):
+def random_prime(nbits, rng=None):
     p = 1
     while p.bit_length() != nbits or not is_prime(p):
-        p = rand.getrandbits(nbits) | 1
+        p = rng.getrandbits(nbits) | 1
         while p.bit_length() == nbits and not is_prime(p):
             p += 2
     return p
-
-# NOTE AES-CTR is almost certainly much faster, but this sticks to the Python stdlib
-class SHA512PRNG(object):
-    def __init__(self, prng_key):
-        self.prng = hashlib.sha512()
-        self.rnum = 0
-        self.prng.update(b"libsig_prng,%s" % str(prng_key).encode("ascii"))
-
-    def _next_rand(self):
-        self.prng.update(b",%d" % self.rnum)
-        self.rnum += 1
-        return self.prng.hexdigest()
-
-    def getrandbits(self, nbits):
-        r = 0
-        b = 0
-        while b < nbits:
-            r <<= 512
-            r += int(self._next_rand(), 16)
-            b += 512
-        if b > nbits:
-            r >>= (b - nbits)
-        return r
-
-    def _randrange(self, maxval):
-        nbits = clog2(maxval)
-        ret = maxval
-        while ret >= maxval:
-            ret = self.getrandbits(nbits)
-        return ret
-
-    def randrange(self, start, stop=None):
-        if stop is None:
-            return self._randrange(start)
-
-        if stop <= start:
-            raise ValueError("require stop > start in randrange(start, stop)")
-
-        return start + self._randrange(stop - start)
