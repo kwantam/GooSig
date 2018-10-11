@@ -10,7 +10,7 @@ import sys
 
 import libsig.util as lutil
 
-# python 2/3 hackishness
+# python 2/3 hack
 if sys.version_info[0] == 2:
     range = xrange      # pylint: disable=redefined-builtin,undefined-variable
 else:
