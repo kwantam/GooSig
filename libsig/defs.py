@@ -6,7 +6,7 @@ import hashlib
 
 class Defs(object):
     winsize = 6     # for RSA operations
-    combsize = 16   # for RSA operations
+    combsize = 14   # for RSA operations
     hashfn = hashlib.sha512
     chalbits = 128
 
@@ -18,7 +18,6 @@ class Defs(object):
              ,647,653,659,661,673,677,683,691,701,709,719,727,733,739,743,751,757,761,769,773,787,797
              ,809,811,821,823,827,829,839,853,857,859,863,877,881,883,887,907,911,919,929,937,941,947
              ,953,967,971,977,983,991,997]
-
 
     class Grsa(object):
         # RSA 2048 challenge

@@ -149,3 +149,63 @@ class RSAGroupOps(object):
 
     def rand_scalar(self):
         return self.prng.getrandbits(self.nbits_rand)
+
+def main(nreps):
+    import libsig.test_util as tu
+
+    # test on random RSA modulus
+    p = lutil.random_prime(512)
+    q = lutil.random_prime(512)
+    n = p * q
+
+    t1 = RSAGroupOps(Defs.Grsa.modulus, Defs.Grsa.g, Defs.Grsa.h)
+    t2 = RSAGroupOps(n, 2, 3)
+
+    def test_pow2():
+        "pow2,RSA_chal,RSA_rand"
+
+        (b1, b2, e1, e2) = ( lutil.rand.getrandbits(2048) for _ in range(0, 4) )
+        out1 = (pow(b1, e1, Defs.Grsa.modulus) * pow(b2, e2, Defs.Grsa.modulus)) % Defs.Grsa.modulus
+        t1o = t1.pow2(b1, e1, b2, e2)
+
+        (b1_s, b2_s, e1_s, e2_s) = ( x >> 1536 for x in (b1, b2, e1, e2) )
+        out2 = (pow(b1_s, e1_s, n) * pow(b2_s, e2_s, n)) % n
+        t2o = t2.pow2(b1_s, e1_s, b2_s, e2_s)
+
+        return (out1 != t1o, out2 != t2o)
+
+    def test_powgh():
+        "powgh,RSA_chal,RSA_rand"
+
+        (e1, e2) = ( lutil.rand.getrandbits(2048) for _ in range(0, 2) )
+
+        out1 = (pow(2, e1, Defs.Grsa.modulus) * pow(3, e2, Defs.Grsa.modulus)) % Defs.Grsa.modulus
+        t1o = t1.powgh(e1, e2)
+
+        (e1_s, e2_s) = ( x >> 1536 for x in (e1, e2) )
+        out2 = (pow(2, e1_s, n) * pow(3, e2_s, n)) % n
+        t2o = t2.powgh(e1_s, e2_s)
+
+        return (out1 != t1o, out2 != t2o)
+
+    def test_inv2():
+        "inv2,RSA_chal,RSA_rand"
+
+        (e1, e2) = ( lutil.rand.getrandbits(2048) for _ in range(0, 2) )
+        (e1Inv, e2Inv) = t1.inv2(e1, e2)
+        t1pass = (e1 * e1Inv) % Defs.Grsa.modulus == 1 and (e2 * e2Inv) % Defs.Grsa.modulus == 1
+
+        (e1_s, e2_s) = ( x >> 1536 for x in (e1, e2) )
+        (e1_sInv, e2_sInv) = t2.inv2(e1_s, e2_s)
+        t2pass = (e1_s * e1_sInv) % n == 1 and (e2_s * e2_sInv) % n == 1
+
+        return (not t1pass, not t2pass)
+
+    tu.run_all_tests(nreps, test_pow2, test_powgh, test_inv2)
+
+if __name__ == "__main__":
+    try:
+        nr = int(sys.argv[1])
+    except:
+        nr = 32
+    main(nr)
