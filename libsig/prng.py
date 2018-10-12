@@ -52,7 +52,8 @@ def fs_chal(*args):
         fs_hash.update(str(arg).encode("utf-8"))
 
     # build PRNG instance and compute chal and ell
-    fs_hash_prng = HashPRNG(fs_hash.hexdigest())
+    prng_key = fs_hash.hexdigest()
+    fs_hash_prng = HashPRNG(prng_key)
     chal = fs_hash_prng.getrandbits(Defs.chalbits)
     ell = lutil.random_prime(Defs.chalbits, fs_hash_prng)
 

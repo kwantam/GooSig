@@ -18,7 +18,8 @@ class HSSigProver(object):
         self.p = p
         self.q = q
         if gops is None:
-            gops = lgops.RSAGroupOps(Defs.Grsa.modulus, Defs.Grsa.g, Defs.Grsa.h)
+            modbits = lutil.clog2(p) + lutil.clog2(q)
+            gops = lgops.RSAGroupOps(Defs.Grsa, modbits)
         self.gops = gops
 
         assert lutil.is_prime(p)
@@ -47,7 +48,7 @@ class HSSigProver(object):
 
         # commitment to w
         s1 = self.gops.rand_scalar()
-        (C2, s1) = self.gops.powgh(w, s1)
+        C2 = self.gops.powgh(w, s1)
 
         # inverses of C1 and C2
         (C1Inv, C2Inv) = self.gops.inv2(C1, C2)

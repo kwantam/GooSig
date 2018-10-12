@@ -266,8 +266,8 @@ def random_prime(nbits, rng=None):
     return p
 
 def main(nreps):
-    p = random_prime(256)
-    q = random_prime(256)
+    from libsig.defs import Defs
+    (p, q) = rand.sample(Defs.primes_2048, 2)
     n = p * q
 
     def test_invert_modp():
@@ -325,5 +325,5 @@ if __name__ == "__main__":
     try:
         nr = int(sys.argv[1])
     except:
-        nr = 128
+        nr = 32
     main(nr)

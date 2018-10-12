@@ -14,26 +14,51 @@ if sys.version_info[0] == 2:
     range = xrange          # pylint: disable=redefined-builtin,undefined-variable
 
 class RSAGroupOps(object):
-    def __init__(self, n, g, h, prng=None):
-        self.n = n
-        self.g = g
-        self.h = h
+    def __init__(self, Gdesc, modbits=None, prng=None):
+        self.n = Gdesc.modulus
+        self.g = Gdesc.g
+        self.h = Gdesc.h
 
         # random scalars can cut off a bit without any danger; this makes rand_scalar faster
-        self.nbits_rand = lutil.clog2(n) - 1
+        self.nbits_rand = lutil.clog2(self.n) - 1
 
-        # largest exponent we will to handle is something like 128 + 2 * log2(n) + 1
+        # combs for g and h
+        # NOTE: you really want to store all combs on disk!
+        #       I'd recommend having a telescope of combs supporting up to (say)
+        #       8192-bit RSA keys (i.e., a ~(2 * 8192 + chalbits + 1) sized comb)
+        #       sized for the group of unknown order (see big_prod_size below)
+        #
+        # Only P needs "big" and "small" combs; V just needs "tiny"
+        #
         combsize = Defs.combsize
-        self.big_comb = combsize * ((2 * lutil.clog2(self.n) + Defs.chalbits + 1 + combsize) // combsize)
-        self.small_comb = combsize * ((lutil.clog2(self.n) + combsize - 1) // combsize)
         self.combsize = combsize
+        # figure out comb sizes
+        if modbits is not None:
+            # largest exponent P handles is the greater of
+            #       chalbits + 2 * log2(P's RSA modulus) + 1
+            # and
+            #       chalbits + log2(P's RSA modulus) + log2(n) + 1
+            big_prod_size = max(2 * modbits, modbits + lutil.clog2(self.n))
+            self.big_comb = combsize * ((big_prod_size + Defs.chalbits + combsize) // combsize)
+            # P has to do a bunch of arithmetic with exponents of size log2(|G|) for G this group
+            self.small_comb = combsize * ((lutil.clog2(self.n) + combsize - 1) // combsize)
+            self.tiny_comb = -1
+        else:
+            self.big_comb = self.small_comb = -1
+            # V's work is over tiny moduli, just chalbits long
+            self.tiny_comb = combsize * ((Defs.chalbits + 1 + combsize) // combsize)
 
-        # precompute combs for g, h
-        # NOTE: you really want to store these on disk!
-        self.gcomb_big = self._precomp_comb(self.g, self.big_comb)
-        self.gcomb_small = self._precomp_comb(self.g, self.small_comb)
-        self.hcomb_big = self._precomp_comb(self.h, self.big_comb)
-        self.hcomb_small = self._precomp_comb(self.h, self.small_comb)
+        # compute the combs
+        if modbits is not None:
+            self.gcomb_big = self._precomp_comb(self.g, self.big_comb)
+            self.hcomb_big = self._precomp_comb(self.h, self.big_comb)
+            self.gcomb_small = self._precomp_comb(self.g, self.small_comb)
+            self.hcomb_small = self._precomp_comb(self.h, self.small_comb)
+            self.gcomb_tiny = self.hcomb_tiny = None
+        else:
+            self.gcomb_big = self.gcomb_small = self.hcomb_big = self.hcomb_small = None
+            self.gcomb_tiny = self._precomp_comb(self.g, self.tiny_comb)
+            self.hcomb_tiny = self._precomp_comb(self.h, self.tiny_comb)
 
         if prng is None:
             # /dev/urandom
@@ -118,7 +143,11 @@ class RSAGroupOps(object):
 
     def powgh(self, e1, e2):
         loge = max(int(e1).bit_length(), int(e2).bit_length())
-        if loge <= self.small_comb:
+        if loge <= self.tiny_comb:
+            max_comb = self.tiny_comb
+            gcomb = self.gcomb_tiny
+            hcomb = self.hcomb_tiny
+        elif loge <= self.small_comb:
             max_comb = self.small_comb
             gcomb = self.gcomb_small
             hcomb = self.hcomb_small
@@ -127,7 +156,7 @@ class RSAGroupOps(object):
             gcomb = self.gcomb_big
             hcomb = self.hcomb_big
         else:
-            raise ValueError("got unexpectedly large exponent in powgh")
+            raise ValueError("got unexpectedly large exponent in powgh (%d > %d)" % (loge, self.big_comb))
 
         e1bits = self._to_comb_bits(e1, max_comb)
         e2bits = self._to_comb_bits(e2, max_comb)
@@ -154,12 +183,12 @@ def main(nreps):
     import libsig.test_util as tu
 
     # test on random RSA modulus
-    p = lutil.random_prime(512)
-    q = lutil.random_prime(512)
+    (p, q) = lutil.rand.sample(Defs.primes_1024, 2)
     n = p * q
+    Grandom = Defs.gen_group_obj(n, 5, 7)
 
-    t1 = RSAGroupOps(Defs.Grsa.modulus, Defs.Grsa.g, Defs.Grsa.h)
-    t2 = RSAGroupOps(n, 2, 3)
+    t1 = RSAGroupOps(Defs.Grsa, 2048)
+    t2 = RSAGroupOps(Grandom, 2048)
 
     def test_pow2():
         "pow2,RSA_chal,RSA_rand"
@@ -168,22 +197,21 @@ def main(nreps):
         out1 = (pow(b1, e1, Defs.Grsa.modulus) * pow(b2, e2, Defs.Grsa.modulus)) % Defs.Grsa.modulus
         t1o = t1.pow2(b1, e1, b2, e2)
 
-        (b1_s, b2_s, e1_s, e2_s) = ( x >> 1536 for x in (b1, b2, e1, e2) )
-        out2 = (pow(b1_s, e1_s, n) * pow(b2_s, e2_s, n)) % n
-        t2o = t2.pow2(b1_s, e1_s, b2_s, e2_s)
+        out2 = (pow(b1, e1, n) * pow(b2, e2, n)) % n
+        t2o = t2.pow2(b1, e1, b2, e2)
 
         return (out1 != t1o, out2 != t2o)
 
     def test_powgh():
         "powgh,RSA_chal,RSA_rand"
 
-        (e1, e2) = ( lutil.rand.getrandbits(2048) for _ in range(0, 2) )
+        (e1, e2) = ( lutil.rand.getrandbits(2 * 2048 + Defs.chalbits + 2) for _ in range(0, 2) )
 
         out1 = (pow(2, e1, Defs.Grsa.modulus) * pow(3, e2, Defs.Grsa.modulus)) % Defs.Grsa.modulus
         t1o = t1.powgh(e1, e2)
 
-        (e1_s, e2_s) = ( x >> 1536 for x in (e1, e2) )
-        out2 = (pow(2, e1_s, n) * pow(3, e2_s, n)) % n
+        (e1_s, e2_s) = ( x >> (2048 + Defs.chalbits) for x in (e1, e2) )
+        out2 = (pow(5, e1_s, n) * pow(7, e2_s, n)) % n
         t2o = t2.powgh(e1_s, e2_s)
 
         return (out1 != t1o, out2 != t2o)

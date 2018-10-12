@@ -15,7 +15,7 @@ if sys.version_info[0] == 2:
 class HSSigVerifier(object):
     def __init__(self, gops=None):
         if gops is None:
-            gops = lgops.RSAGroupOps(Defs.Grsa.modulus, Defs.Grsa.g, Defs.Grsa.h)
+            gops = lgops.RSAGroupOps(Defs.Grsa, modbits=None)
         self.gops = gops
 
     def verify(self, pubkey, msg, sigma):
@@ -36,7 +36,12 @@ class HSSigVerifier(object):
         A = self.gops.mul(self.gops.pow2(Aq, ell, C2Inv, chal), self.gops.powgh(zp_w, zp_s1))
         B = self.gops.mul(self.gops.pow2(Bq, ell, C2Inv, zp_w), self.gops.powgh(zp_w2, zp_s1w))
         C = self.gops.mul(self.gops.pow2(Cq, ell, C1Inv, zp_a), self.gops.powgh(zp_an, zp_sa))
-        D = Dq * ell + zp_w2 - zp_an - t * chal
+
+        # make sure sign of (zp_w2 - zp_an) is positive
+        zp_w2_m_an = zp_w2 - zp_an
+        if zp_w2_m_an < 0:
+            zp_w2_m_an += ell
+        D = Dq * ell + zp_w2_m_an - t * chal
 
         ###
         ### Step 2: recompute implicitly claimed V message, viz., chal and ell
