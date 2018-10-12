@@ -56,16 +56,20 @@ def run_test(f, nreps):
 
     return (sum( 1 for x in fails if x > 0 ), len(fails))
 
-def run_all_tests(nreps, *tests):
+def run_all_tests(nreps, modname, *tests):
+    show_test("%s tests" % modname, 0)
+    sys.stdout.write("\n")
+
     fails = subtests = 0
     for test in tests:
         (f, s) = run_test(test, nreps)
         fails += f
         subtests += s
 
-    show_test("\nSummary", 0)
+    show_test("Summary", 0)
     sys.stdout.write("\n")
     if fails == 0:
         show_one_result("all %d subtests passed" % subtests, None, None)
     else:
         show_one_result("some subtests did not pass", fails, subtests)
+    sys.stdout.write("\n")

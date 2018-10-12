@@ -201,7 +201,7 @@ def main(nreps):
 
         return (not t1pass, not t2pass)
 
-    tu.run_all_tests(nreps, test_pow2, test_powgh, test_inv2)
+    tu.run_all_tests(nreps, "group_ops", test_pow2, test_powgh, test_inv2)
 
 if __name__ == "__main__":
     try:

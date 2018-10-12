@@ -6,6 +6,8 @@ import math
 import random
 import sys
 
+import libsig.test_util as tu
+
 # python 2/3 hack
 if sys.version_info[0] == 2:
     range = xrange      # pylint: disable=redefined-builtin,undefined-variable
@@ -22,8 +24,7 @@ def invert_modp(val, prime):
     if val % prime == 0:
         return 0
     (inv, _) = ext_euclid(val % prime, prime)
-    if (inv * val - 1) % prime != 0:
-        assert False
+    assert (inv * val - 1) % prime == 0
     return inv % prime
 
 def ext_euclid(a, b):
@@ -43,7 +44,7 @@ def ext_euclid(a, b):
 # compute Jacobi symbol, n prime or composite
 def jacobi(a, n):
     if n <= 0 or n % 2 == 0:
-        return 0
+        raise ValueError("Jacobi symbol (a/n) is undefined for negative, zero, and even n")
 
     negate = False
     a = a % n
@@ -263,3 +264,66 @@ def random_prime(nbits, rng=None):
         while p.bit_length() == nbits and not is_prime(p):
             p += 2
     return p
+
+def main(nreps):
+    p = random_prime(256)
+    q = random_prime(256)
+    n = p * q
+
+    def test_invert_modp():
+        "invert_modp,p,pq"
+
+        r = rand.randrange(p)
+        rInv = invert_modp(r, p)
+
+        r2 = rand.randrange(n)
+        r2Inv = invert_modp(r2, n)
+
+        return ((r * rInv - 1) % p != 0, (r2 * r2Inv - 1) % n != 0)
+
+    def test_ext_euclid():
+        "ext_euclid,gcd"
+
+        # find GCD of two random integers
+        r1 = rand.getrandbits(256)
+        r2 = rand.getrandbits(256)
+        (r1_e, r2_e) = ext_euclid(r1, r2)
+        d = r1 * r1_e + r2 * r2_e
+
+        # r1d and r2d should now be relatively prime
+        r1d = r1 // d
+        r2d = r2 // d
+        (r1d_e, r2d_e) = ext_euclid(r1d, r2d)
+
+        return (r1d * r1d_e + r2d * r2d_e - 1 != 0,)
+
+    def test_isqrt():
+        "isqrt,test"
+
+        r = rand.getrandbits(256)
+        int_sqrtR = isqrt(r)
+        ok = int_sqrtR ** 2 <= r < (int_sqrtR + 1) ** 2
+
+        return (not ok,)
+
+    def test_sqrt_modp():
+        "sqrt_modp,p,pq"
+
+        r1 = (rand.randrange(p) ** 2) % p
+        sqrtR1 = sqrt_modp(r1, p)
+
+        r2 = (rand.randrange(n) ** 2) % n
+        sqrtR2 = sqrt_modn(r2, p, q)
+
+        return ((sqrtR1 ** 2) % p != r1, (sqrtR2 ** 2) % n != r2)
+
+    # what about testing is_prime et al? might be nice to be able to link against GMP or Pari for that.
+
+    tu.run_all_tests(nreps, "util", test_invert_modp, test_ext_euclid, test_isqrt, test_sqrt_modp)
+
+if __name__ == "__main__":
+    try:
+        nr = int(sys.argv[1])
+    except:
+        nr = 128
+    main(nr)
