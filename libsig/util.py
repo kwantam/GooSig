@@ -65,17 +65,21 @@ def jacobi(a, n):
 
     return 0
 
+# essentially https://en.wikipedia.org/wiki/Integer_square_root
 def isqrt(n):
     if n < 0:
-        return None
-    if n < 2:
-        return n
+        raise ValueError("isqrt called with negative input")
 
-    smallCand = isqrt(n >> 2) << 1
-    largeCand = smallCand + 1
-    if largeCand * largeCand > n:
-        return smallCand
-    return largeCand
+    shift = max(0, 2 * ((int(n).bit_length() + 1) // 2) - 2)
+    res = 0
+    while shift >= 0:
+        res <<= 1
+        res_c = res + 1
+        if (res_c * res_c) <= (n >> shift):
+            res = res_c
+        shift -= 2
+
+    return res
 
 def is_square(n):
     isqn = isqrt(n)
@@ -251,6 +255,8 @@ def sqrt_modn(x, p, q):
     return (sqrtQ * mP * p + sqrtP * mQ * q) % (p * q)
 
 def random_prime(nbits, rng=None):
+    if rng is None:
+        rng = rand
     p = 1
     while p.bit_length() != nbits or not is_prime(p):
         p = rng.getrandbits(nbits) | 1

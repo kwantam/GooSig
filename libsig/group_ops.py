@@ -36,11 +36,14 @@ class RSAGroupOps(object):
         self.hcomb_small = self._precomp_comb(self.h, self.small_comb)
 
         if prng is None:
+            # /dev/urandom
             self.prng = lutil.rand
         else:
+            # provided RNG
             self.prng = prng
 
     def pow(self, b, e):
+        # native pow is pretty fast already
         return pow(b, e, self.n)
 
     def _precomp_wind2(self, b1, b2, winsize):
