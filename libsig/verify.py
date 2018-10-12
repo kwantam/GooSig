@@ -12,7 +12,7 @@ import libsig.prng as lprng
 if sys.version_info[0] == 2:
     range = xrange      # pylint: disable=redefined-builtin,undefined-variable
 
-class HSSigVerifier(object):
+class GooSigVerifier(object):
     def __init__(self, gops=None):
         if gops is None:
             gops = lgops.RSAGroupOps(Defs.Grsa, modbits=None)

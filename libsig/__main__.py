@@ -8,10 +8,10 @@ import sys
 try:
     from libsig.defs import Defs
     import libsig.group_ops as lg
-    from libsig.prove import HSSigProver
+    from libsig.sign import GooSigSigner
     import libsig.test_util as tu
     import libsig.util as lu
-    from libsig.verify import HSSigVerifier
+    from libsig.verify import GooSigVerifier
 except:
     print("ERROR: Could not import libsig. Try invoking as `python -m libsig`.")
     sys.exit(1)
@@ -39,12 +39,12 @@ def main(run_submodules, nreps):
                           , (Defs.primes_2048, "RSA group, 4096-bit RSA key. Test #2.", gops_4096_p, gops_4096_v) \
                           )):
             (p, q) = lu.rand.sample(plist, 2)
-            prv = HSSigProver(p, q, gops_p)
+            prv = GooSigSigner(p, q, gops_p)
             s = prv.gops.rand_scalar()
             C1 = prv.gops.powgh(p * q, s)
             (C2, t, sigma) = prv.sign(C1, s, msg)
 
-            ver = HSSigVerifier(gops_v)
+            ver = GooSigVerifier(gops_v)
             res[idx] = not ver.verify((C1, C2, t), msg, sigma)
 
         return res

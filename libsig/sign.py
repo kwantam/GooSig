@@ -13,7 +13,7 @@ import libsig.util as lutil
 if sys.version_info[0] == 2:
     range = xrange      # pylint: disable=redefined-builtin,undefined-variable
 
-class HSSigProver(object):
+class GooSigSigner(object):
     def __init__(self, p, q, gops=None):
         self.p = p
         self.q = q
