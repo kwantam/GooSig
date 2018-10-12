@@ -2,29 +2,28 @@
 #
 # (C) 2018 Riad S. Wahby <rsw@cs.stanford.edu>
 
-import hashlib
-
+from libsig.defs import Defs
 import libsig.util as lutil
 
 # NOTE AES-CTR is almost certainly much faster, but this sticks to the Python stdlib
-class SHA512PRNG(object):
+class HashPRNG(object):
     def __init__(self, prng_key):
-        self.prng = hashlib.sha512()
+        self.prng = Defs.hashfn(b"libsig_prng,%s" % str(prng_key).encode("utf-8"))
         self.rnum = 0
-        self.prng.update(b"libsig_prng,%s" % str(prng_key).encode("ascii"))
 
     def _next_rand(self):
-        self.prng.update(b",%d" % self.rnum)
+        self.prng.update(b"%016x" % self.rnum)
         self.rnum += 1
-        return self.prng.hexdigest()
+        return int(self.prng.hexdigest(), 16)
 
     def getrandbits(self, nbits):
         r = 0
         b = 0
+        hashbits = self.prng.digest_size * 8
         while b < nbits:
-            r <<= 512
-            r += int(self._next_rand(), 16)
-            b += 512
+            r <<= hashbits
+            r += self._next_rand()
+            b += hashbits
         if b > nbits:
             r >>= (b - nbits)
         return r

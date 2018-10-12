@@ -11,7 +11,7 @@ import libsig.util as lutil
 if sys.version_info[0] == 2:
     range = xrange      # pylint: disable=redefined-builtin,undefined-variable
 
-class _RSAGroupOps(object):
+class RSAGroupOps(object):
     pctable = None
 
     def __init__(self, n, g, h, prng=None):
@@ -81,12 +81,3 @@ class _RSAGroupOps(object):
     def div(self, n, d):
         dInv = lutil.invert_modp(d, self.n)
         return (n * dInv) % self.n
-
-class Commit(object):
-    def __init__(self, gops):
-        self.gops = gops
-
-    def commit(self, v):
-        s = self.gops.rand_scalar()
-        com = self.gops.powgh(v, s)
-        return (com, s)
