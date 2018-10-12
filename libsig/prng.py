@@ -43,3 +43,17 @@ class HashPRNG(object):
             raise ValueError("require stop > start in randrange(start, stop)")
 
         return start + self._randrange(stop - start)
+
+def fs_chal(*args):
+    fs_hash = Defs.hashfn(b"libsig:")
+
+    # hash the inputs
+    for arg in args:
+        fs_hash.update(str(arg).encode("utf-8"))
+
+    # build PRNG instance and compute chal and ell
+    fs_hash_prng = HashPRNG(fs_hash.hexdigest())
+    chal = fs_hash_prng.getrandbits(Defs.chalbits)
+    ell = lutil.random_prime(Defs.chalbits, fs_hash_prng)
+
+    return (chal, ell)

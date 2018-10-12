@@ -170,10 +170,7 @@ def is_prime_lucas(n, nreps):
     return True
 
 # Rabin-Miller
-def is_prime_rm(n, nreps, rng):
-    if rng is None:
-        rng = rand
-
+def is_prime_rm(n, nreps):
     if n < 7:
         if n in (3, 5):
             return True
@@ -182,7 +179,7 @@ def is_prime_rm(n, nreps, rng):
     (d, r) = factor_twos(n - 1)
 
     for _ in range(0, nreps):
-        a = int(rng.randint(2, n - 2))
+        a = int(rand.randint(2, n - 2))
         x = pow(a, d, n)
 
         if x in (1, n-1):
@@ -202,9 +199,9 @@ def is_prime_rm(n, nreps, rng):
 
     return True
 
-# Baillie-PSW primality test (default #reps should be massive overkill)
-def is_prime(n, nreps=8, rng=None):
-    return is_prime_rm(n, 16 * nreps, rng) and is_prime_lucas(n, nreps)
+# Baillie-PSW primality test (default #reps is massive overkill)
+def is_prime(n, nreps=8):
+    return is_prime_rm(n, 16 * nreps) and is_prime_lucas(n, nreps)
 
 # Tonelli-Shanks
 def sqrt_modp(n, p):
@@ -255,7 +252,6 @@ def sqrt_modp(n, p):
 
 # sqrt mod a product of primes
 def sqrt_modn(x, p, q):
-    # use Chinese Remainder Theorem: find sqrts mod p and q, then assemble
     sqrtP = sqrt_modp(x, p)
     sqrtQ = sqrt_modp(x, q)
 
