@@ -29,7 +29,7 @@ class RSAGroupOps(object):
         self.combsize = combsize
 
         # precompute combs for g, h
-        # NOTE: you really want to store these on disk instead!
+        # NOTE: you really want to store these on disk!
         self.gcomb_big = self._precomp_comb(self.g, self.big_comb)
         self.gcomb_small = self._precomp_comb(self.g, self.small_comb)
         self.hcomb_big = self._precomp_comb(self.h, self.big_comb)

@@ -12,18 +12,6 @@ if sys.version_info[0] == 2:
 
 rand = random.SystemRandom()
 
-def flatten_iter(vals):
-    # from https://stackoverflow.com/questions/10823877/
-    for i in vals:
-        if isinstance(i, (list,tuple)):
-            for j in flatten_iter(i):
-                yield j
-        else:
-            yield i
-
-def flatten(vals):
-    return list(flatten_iter(vals))
-
 # ceiling of log2
 def clog2(val):
     if isinstance(val, float):
