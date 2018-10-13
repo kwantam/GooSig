@@ -16,6 +16,7 @@ if sys.version_info[0] == 2:
 class RSAGroupOps(object):
     def __init__(self, Gdesc, modbits=None, prng=None):
         self.n = Gdesc.modulus
+        self.nOver2 = self.n // 2
         self.g = Gdesc.g
         self.h = Gdesc.h
 
@@ -67,9 +68,18 @@ class RSAGroupOps(object):
             # provided RNG
             self.prng = prng
 
+    def quot(self, b):
+        # compute the representative of (Z/n)/{1,-1}, i.e., min(|b|, n-|b|)
+        if b > self.nOver2:
+            return self.n - b
+        return b
+
+    def is_quot(self, b):
+        return b <= self.nOver2
+
     def pow(self, b, e):
         # native pow is pretty fast already
-        return pow(b, e, self.n)
+        return self.quot(pow(b, e, self.n))
 
     def _precomp_wind2(self, b1, b2, winsize):
         ret = [1] * (2 ** (2 * winsize))
@@ -103,7 +113,7 @@ class RSAGroupOps(object):
             ret *= pctable[e1val + winlen * e2val]
             ret %= self.n
 
-        return ret
+        return self.quot(ret)
 
     @staticmethod
     def _from_win(ls):
@@ -167,14 +177,14 @@ class RSAGroupOps(object):
             ret = (ret * gcomb[e1v]) % self.n
             ret = (ret * hcomb[e2v]) % self.n
 
-        return ret
+        return self.quot(ret)
 
     def mul(self, m1, m2):
-        return (m1 * m2) % self.n
+        return self.quot((m1 * m2) % self.n)
 
     def inv2(self, b1, b2):
         b12Inv = lutil.invert_modp(b1 * b2, self.n)
-        return ((b2 * b12Inv) % self.n, (b1 * b12Inv) % self.n)
+        return (self.quot((b2 * b12Inv) % self.n), self.quot((b1 * b12Inv) % self.n))
 
     def rand_scalar(self):
         return self.prng.getrandbits(self.nbits_rand)
@@ -194,10 +204,10 @@ def main(nreps):
         "pow2,RSA_chal,RSA_rand"
 
         (b1, b2, e1, e2) = ( lutil.rand.getrandbits(2048) for _ in range(0, 4) )
-        out1 = (pow(b1, e1, Defs.Grsa.modulus) * pow(b2, e2, Defs.Grsa.modulus)) % Defs.Grsa.modulus
+        out1 = t1.quot((pow(b1, e1, Defs.Grsa.modulus) * pow(b2, e2, Defs.Grsa.modulus)) % Defs.Grsa.modulus)
         t1o = t1.pow2(b1, e1, b2, e2)
 
-        out2 = (pow(b1, e1, n) * pow(b2, e2, n)) % n
+        out2 = t2.quot((pow(b1, e1, n) * pow(b2, e2, n)) % n)
         t2o = t2.pow2(b1, e1, b2, e2)
 
         return (out1 != t1o, out2 != t2o)
@@ -207,11 +217,11 @@ def main(nreps):
 
         (e1, e2) = ( lutil.rand.getrandbits(2 * 2048 + Defs.chalbits + 2) for _ in range(0, 2) )
 
-        out1 = (pow(2, e1, Defs.Grsa.modulus) * pow(3, e2, Defs.Grsa.modulus)) % Defs.Grsa.modulus
+        out1 = t1.quot((pow(2, e1, Defs.Grsa.modulus) * pow(3, e2, Defs.Grsa.modulus)) % Defs.Grsa.modulus)
         t1o = t1.powgh(e1, e2)
 
         (e1_s, e2_s) = ( x >> (2048 + Defs.chalbits) for x in (e1, e2) )
-        out2 = (pow(5, e1_s, n) * pow(7, e2_s, n)) % n
+        out2 = t2.quot((pow(5, e1_s, n) * pow(7, e2_s, n)) % n)
         t2o = t2.powgh(e1_s, e2_s)
 
         return (out1 != t1o, out2 != t2o)
@@ -221,11 +231,11 @@ def main(nreps):
 
         (e1, e2) = ( lutil.rand.getrandbits(2048) for _ in range(0, 2) )
         (e1Inv, e2Inv) = t1.inv2(e1, e2)
-        t1pass = (e1 * e1Inv) % Defs.Grsa.modulus == 1 and (e2 * e2Inv) % Defs.Grsa.modulus == 1
+        t1pass = t1.quot((e1 * e1Inv) % Defs.Grsa.modulus) == 1 and t1.quot((e2 * e2Inv) % Defs.Grsa.modulus) == 1
 
         (e1_s, e2_s) = ( x >> 1536 for x in (e1, e2) )
         (e1_sInv, e2_sInv) = t2.inv2(e1_s, e2_s)
-        t2pass = (e1_s * e1_sInv) % n == 1 and (e2_s * e2_sInv) % n == 1
+        t2pass = t2.quot((e1_s * e1_sInv) % n) == 1 and t2.quot((e2_s * e2_sInv) % n) == 1
 
         return (not t1pass, not t2pass)
 

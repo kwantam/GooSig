@@ -23,9 +23,13 @@ class GooSigVerifier(object):
         (chal, ell, Aq, Bq, Cq, Dq, z_prime) = sigma
         (zp_w, zp_w2, zp_s1, zp_a, zp_an, zp_s1w, zp_sa) = z_prime
 
-        # make sure that the public key is valid!
+        # make sure that the public key is valid
         if t not in Defs.primes:
-            raise ValueError("public key element t is not a prime less than 1000")
+            # t must be one of the small primes in our list
+            return False
+        if not all( self.gops.is_quot(b) for b in (C1, C2, Aq, Bq, Cq) ):
+            # all group elements must be the "canonical" element of the quotient group (Z/n)/{1,-1}
+            return False
 
         # compute inverses of C1 and C2
         (C1Inv, C2Inv) = self.gops.inv2(C1, C2)
@@ -39,9 +43,9 @@ class GooSigVerifier(object):
 
         # make sure sign of (zp_w2 - zp_an) is positive
         zp_w2_m_an = zp_w2 - zp_an
-        if zp_w2_m_an < 0:
-            zp_w2_m_an += ell
         D = Dq * ell + zp_w2_m_an - t * chal
+        if zp_w2_m_an < 0:
+            D += ell
 
         ###
         ### Step 2: recompute implicitly claimed V message, viz., chal and ell
