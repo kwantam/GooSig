@@ -4,10 +4,10 @@
 
 import sys
 
-import libsig.group_ops as lgops
-from libsig.defs import Defs
-import libsig.prng as lprng
-import libsig.util as lutil
+import libGooPy.group_ops as lgops
+from libGooPy.defs import Defs
+import libGooPy.prng as lprng
+import libGooPy.util as lutil
 
 # python 2/3 hack
 if sys.version_info[0] == 2:

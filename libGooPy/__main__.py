@@ -6,14 +6,14 @@ from __future__ import print_function
 import sys
 
 try:
-    from libsig.defs import Defs
-    import libsig.group_ops as lg
-    from libsig.sign import GooSigSigner
-    import libsig.test_util as tu
-    import libsig.util as lu
-    from libsig.verify import GooSigVerifier
+    from libGooPy.defs import Defs
+    import libGooPy.group_ops as lg
+    from libGooPy.sign import GooSigSigner
+    import libGooPy.test_util as tu
+    import libGooPy.util as lu
+    from libGooPy.verify import GooSigVerifier
 except:
-    print("ERROR: Could not import libsig. Try invoking as `python -m libsig`.")
+    print("ERROR: Could not import libGooPy. Try invoking as `python -m libGooPy`.")
     sys.exit(1)
 
 def main(run_submodules, nreps):

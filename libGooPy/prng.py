@@ -2,13 +2,13 @@
 #
 # (C) 2018 Riad S. Wahby <rsw@cs.stanford.edu>
 
-from libsig.defs import Defs
-import libsig.util as lutil
+from libGooPy.defs import Defs
+import libGooPy.util as lutil
 
 # NOTE AES-CTR is almost certainly much faster, but this sticks to the Python stdlib
 class HashPRNG(object):
     def __init__(self, prng_key):
-        self.prng = Defs.hashfn(b"libsig_prng,%s" % str(prng_key).encode("utf-8"))
+        self.prng = Defs.hashfn(b"libGooPy_prng,%s" % str(prng_key).encode("utf-8"))
         self.rnum = 0
 
     def _next_rand(self):
@@ -45,7 +45,7 @@ class HashPRNG(object):
         return start + self._randrange(stop - start)
 
 def fs_chal(*args):
-    fs_hash = Defs.hashfn(b"libsig:")
+    fs_hash = Defs.hashfn(b"libGooPy:")
 
     # hash the inputs
     for arg in args:

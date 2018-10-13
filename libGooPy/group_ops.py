@@ -5,8 +5,8 @@
 import itertools
 import sys
 
-from libsig.defs import Defs
-import libsig.util as lutil
+from libGooPy.defs import Defs
+import libGooPy.util as lutil
 
 # python 2/3 hack
 if sys.version_info[0] == 2:
@@ -190,7 +190,7 @@ class RSAGroupOps(object):
         return self.prng.getrandbits(self.nbits_rand)
 
 def main(nreps):
-    import libsig.test_util as tu
+    import libGooPy.test_util as tu
 
     # test on random RSA modulus
     (p, q) = lutil.rand.sample(Defs.primes_1024, 2)

@@ -6,7 +6,7 @@ import math
 import random
 import sys
 
-import libsig.test_util as tu
+import libGooPy.test_util as tu
 
 # python 2/3 hack
 if sys.version_info[0] == 2:
@@ -266,7 +266,7 @@ def random_prime(nbits, rng=None):
     return p
 
 def main(nreps):
-    from libsig.defs import Defs
+    from libGooPy.defs import Defs
     (p, q) = rand.sample(Defs.primes_2048, 2)
     n = p * q
 
