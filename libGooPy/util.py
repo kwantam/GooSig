@@ -279,7 +279,7 @@ def main(nreps):
         r2 = rand.randrange(n)
         r2Inv = invert_modp(r2, n)
 
-        return ((r * rInv - 1) % p != 0, (r2 * r2Inv - 1) % n != 0)
+        return ((r * rInv - 1) % p == 0, (r2 * r2Inv - 1) % n == 0)
 
     def test_ext_euclid():
         "ext_euclid,gcd"
@@ -295,7 +295,7 @@ def main(nreps):
         r2d = r2 // d
         (r1d_e, r2d_e) = ext_euclid(r1d, r2d)
 
-        return (r1d * r1d_e + r2d * r2d_e - 1 != 0,)
+        return (r1d * r1d_e + r2d * r2d_e - 1 == 0,)
 
     def test_isqrt():
         "isqrt,test"
@@ -304,7 +304,7 @@ def main(nreps):
         int_sqrtR = isqrt(r)
         ok = int_sqrtR ** 2 <= r < (int_sqrtR + 1) ** 2
 
-        return (not ok,)
+        return (ok,)
 
     def test_sqrt_modp():
         "sqrt_modp,p,pq"
@@ -315,7 +315,7 @@ def main(nreps):
         r2 = (rand.randrange(n) ** 2) % n
         sqrtR2 = sqrt_modn(r2, p, q)
 
-        return ((sqrtR1 ** 2) % p != r1, (sqrtR2 ** 2) % n != r2)
+        return ((sqrtR1 ** 2) % p == r1, (sqrtR2 ** 2) % n == r2)
 
     # what about testing is_prime et al? might be nice to be able to link against GMP or Pari for that.
 

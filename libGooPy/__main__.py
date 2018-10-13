@@ -22,13 +22,14 @@ def main(run_submodules, nreps):
         lg.main(nreps)
 
     # reuse Gops throughout. Notice that you can reuse gops for different
-    # P moduli as long as the *size* of the P modulus stays the same
-    # group ops to support 2048-bit P modulus and 4096-bit AOL root cert group
+    # Signer modulus as long as the *size* of the Signer's modulus stays the same.
+    #
+    # group ops to support 2048-bit Signer modulus and 4096-bit AOL root cert group
     gops_2048_p = lg.RSAGroupOps(Defs.Gaol, 2048)
     gops_2048_v = lg.RSAGroupOps(Defs.Gaol, None)
-    # group ops to support 4096-bit P modulus and 2048-bit RSA challenge group
-    gops_4096_p = lg.RSAGroupOps(Defs.Grsa, 4096)
-    gops_4096_v = lg.RSAGroupOps(Defs.Grsa, None)
+    # group ops to support 4096-bit Signer modulus and 2048-bit RSA challenge group
+    gops_4096_p = lg.RSAGroupOps(Defs.Grsa2048, 4096)
+    gops_4096_v = lg.RSAGroupOps(Defs.Grsa2048, None)
 
     def test_sign_verify():
         "sign_and_verify,AOLx2048,RSAx4096"
@@ -45,7 +46,7 @@ def main(run_submodules, nreps):
             (C2, t, sigma) = prv.sign(C1, s, msg)
 
             ver = GooSigVerifier(gops_v)
-            res[idx] = not ver.verify((C1, C2, t), msg, sigma)
+            res[idx] = ver.verify((C1, C2, t), msg, sigma)
 
         return res
 

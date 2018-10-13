@@ -38,7 +38,7 @@ def run_test(f, nreps):
         checks = f()
         cidx = 0
         for (cidx, c) in enumerate(checks):
-            if c:
+            if not c:
                 failed = True
                 fails[cidx] += 1
         assert cidx + 1 == len(fails)

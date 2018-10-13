@@ -19,7 +19,7 @@ class GooSigSigner(object):
         self.q = q
         if gops is None:
             modbits = lutil.clog2(p) + lutil.clog2(q)
-            gops = lgops.RSAGroupOps(Defs.Grsa, modbits)
+            gops = lgops.RSAGroupOps(Defs.Grsa2048, modbits)
         self.gops = gops
 
         assert lutil.is_prime(p)

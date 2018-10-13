@@ -15,7 +15,7 @@ if sys.version_info[0] == 2:
 class GooSigVerifier(object):
     def __init__(self, gops=None):
         if gops is None:
-            gops = lgops.RSAGroupOps(Defs.Grsa, modbits=None)
+            gops = lgops.RSAGroupOps(Defs.Grsa2048, modbits=None)
         self.gops = gops
 
     def verify(self, pubkey, msg, sigma):

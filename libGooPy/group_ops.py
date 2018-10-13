@@ -197,47 +197,47 @@ def main(nreps):
     n = p * q
     Grandom = Defs.gen_group_obj(n, 5, 7)
 
-    t1 = RSAGroupOps(Defs.Grsa, 2048)
+    t1 = RSAGroupOps(Defs.Grsa2048, 2048)
     t2 = RSAGroupOps(Grandom, 2048)
 
     def test_pow2():
         "pow2,RSA_chal,RSA_rand"
 
         (b1, b2, e1, e2) = ( lutil.rand.getrandbits(2048) for _ in range(0, 4) )
-        out1 = t1.quot((pow(b1, e1, Defs.Grsa.modulus) * pow(b2, e2, Defs.Grsa.modulus)) % Defs.Grsa.modulus)
+        out1 = t1.quot((pow(b1, e1, Defs.Grsa2048.modulus) * pow(b2, e2, Defs.Grsa2048.modulus)) % Defs.Grsa2048.modulus)
         t1o = t1.pow2(b1, e1, b2, e2)
 
         out2 = t2.quot((pow(b1, e1, n) * pow(b2, e2, n)) % n)
         t2o = t2.pow2(b1, e1, b2, e2)
 
-        return (out1 != t1o, out2 != t2o)
+        return (out1 == t1o, out2 == t2o)
 
     def test_powgh():
         "powgh,RSA_chal,RSA_rand"
 
         (e1, e2) = ( lutil.rand.getrandbits(2 * 2048 + Defs.chalbits + 2) for _ in range(0, 2) )
 
-        out1 = t1.quot((pow(2, e1, Defs.Grsa.modulus) * pow(3, e2, Defs.Grsa.modulus)) % Defs.Grsa.modulus)
+        out1 = t1.quot((pow(2, e1, Defs.Grsa2048.modulus) * pow(3, e2, Defs.Grsa2048.modulus)) % Defs.Grsa2048.modulus)
         t1o = t1.powgh(e1, e2)
 
         (e1_s, e2_s) = ( x >> (2048 + Defs.chalbits) for x in (e1, e2) )
         out2 = t2.quot((pow(5, e1_s, n) * pow(7, e2_s, n)) % n)
         t2o = t2.powgh(e1_s, e2_s)
 
-        return (out1 != t1o, out2 != t2o)
+        return (out1 == t1o, out2 == t2o)
 
     def test_inv2():
         "inv2,RSA_chal,RSA_rand"
 
         (e1, e2) = ( lutil.rand.getrandbits(2048) for _ in range(0, 2) )
         (e1Inv, e2Inv) = t1.inv2(e1, e2)
-        t1pass = t1.quot((e1 * e1Inv) % Defs.Grsa.modulus) == 1 and t1.quot((e2 * e2Inv) % Defs.Grsa.modulus) == 1
+        t1pass = t1.quot((e1 * e1Inv) % Defs.Grsa2048.modulus) == 1 and t1.quot((e2 * e2Inv) % Defs.Grsa2048.modulus) == 1
 
         (e1_s, e2_s) = ( x >> 1536 for x in (e1, e2) )
         (e1_sInv, e2_sInv) = t2.inv2(e1_s, e2_s)
         t2pass = t2.quot((e1_s * e1_sInv) % n) == 1 and t2.quot((e2_s * e2_sInv) % n) == 1
 
-        return (not t1pass, not t2pass)
+        return (t1pass, t2pass)
 
     tu.run_all_tests(nreps, "group_ops", test_pow2, test_powgh, test_inv2)
 
