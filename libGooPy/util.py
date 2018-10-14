@@ -2,6 +2,7 @@
 #
 # (C) 2018 Riad S. Wahby <rsw@cs.stanford.edu>
 
+from itertools import chain
 import math
 import random
 import sys
@@ -88,13 +89,11 @@ def is_square(n):
         return True
     return False
 
-def num_to_bits(n):
-    nbits = int(n).bit_length()
-    res = [None] * nbits
-    for idx in range(0, nbits):
-        res[nbits - 1 - idx] = True if n & 1 else False
-        n = n >> 1
-    return res
+def num_to_bits(n, pad=None):
+    bit_iter = ( b == "1" for b in bin(int(n))[2:] )
+    if pad is None:
+        return bit_iter
+    return chain(( False for _ in range(0, pad - n.bit_length()) ), bit_iter)
 
 def factor_twos(n):
     d = n
@@ -114,8 +113,9 @@ def is_prime_lucas(n, nreps):
 
     (d, s) = factor_twos(n + 1)
     dbits = num_to_bits(d)
-    assert dbits[0]
-    dbits = dbits[1:]
+    msbit = next(dbits)
+    assert msbit
+    dbits = list(dbits)
 
     def lucas_double(u, v, Qk):
         u = (u * v) % n

@@ -3,6 +3,7 @@
 # (C) 2018 Riad S. Wahby <rsw@cs.stanford.edu>
 
 import itertools
+from itertools import islice
 import sys
 
 from libGooPy.defs import Defs
@@ -98,11 +99,9 @@ class RSAGroupOps(object):
         pctable = self._precomp_wind2(b1, b2, Defs.winsize)
 
         # exponents as bits, padded to multiple of winsize
-        e1bits = lutil.num_to_bits(e1)
-        e2bits = lutil.num_to_bits(e2)
-        nwins = (max(len(e1bits), len(e2bits)) + (Defs.winsize - 1)) // Defs.winsize
-        e1bits = ([False] * (Defs.winsize * nwins - len(e1bits))) + e1bits
-        e2bits = ([False] * (Defs.winsize * nwins - len(e2bits))) + e2bits
+        nwins = (max(e1.bit_length(), e2.bit_length()) + (Defs.winsize - 1)) // Defs.winsize
+        e1bits = lutil.num_to_bits(e1, nwins * Defs.winsize)
+        e2bits = lutil.num_to_bits(e2, nwins * Defs.winsize)
 
         winlen = 2 ** Defs.winsize
         ret = 1
@@ -110,8 +109,8 @@ class RSAGroupOps(object):
             if win > 0:
                 ret = pow(ret, winlen, self.n)
 
-            e1val = self._from_win(e1bits[Defs.winsize * win : Defs.winsize * (win + 1)])
-            e2val = self._from_win(e2bits[Defs.winsize * win : Defs.winsize * (win + 1)])
+            e1val = self._from_win(islice(e1bits, Defs.winsize))
+            e2val = self._from_win(islice(e2bits, Defs.winsize))
 
             ret *= pctable[e1val + winlen * e2val]
             ret %= self.n
@@ -119,12 +118,11 @@ class RSAGroupOps(object):
         return self.quot(ret)
 
     @staticmethod
-    def _from_win(ls):
+    def _from_win(vs):
         ret = 0
-        for v in ls[:-1]:
-            ret += 1 if v else 0
+        for v in vs:
             ret <<= 1
-        ret += 1 if ls[-1] else 0
+            ret += 1 if v else 0
         return ret
 
     def _precomp_comb(self, b, max_comb):
@@ -147,9 +145,7 @@ class RSAGroupOps(object):
         return comb_windowed
 
     def _to_comb_bits(self, e, max_comb):
-        ebits = lutil.num_to_bits(e)
-        ebits = ([False] * (max_comb - int(e).bit_length())) + lutil.num_to_bits(e)
-        assert len(ebits) == max_comb
+        ebits = list(lutil.num_to_bits(e, max_comb))
         bpc = max_comb // self.combsize
         comb_words_iter = zip(*( ebits[j*bpc:(j+1)*bpc] for j in range(0, self.combsize) ))
         return ( self._from_win(x) for x in comb_words_iter )
