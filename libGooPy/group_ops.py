@@ -21,6 +21,22 @@ def _from_win(vs):
         ret += 1 if v else 0
     return ret
 
+def _wnaf(r, w, bitlen=None):
+    if bitlen is None:
+        bitlen = r.bit_length() + 1
+    out = [None] * bitlen
+    for i in reversed(range(0, bitlen)):
+        val = 0
+        if r % 2:
+            val = r & ((1<<w)-1)
+            if val & (1<<(w-1)):
+                val -= (1<<w)
+            r -= val
+        out[i] = val
+        r = r >> 1
+    assert r == 0
+    return out
+
 class _CombPrecomp(list):
     def __init__(self, g, combspec, gops):
         (ppa, aps, nshifts, bpw, _, size) = combspec
@@ -165,6 +181,44 @@ class RSAGroupOps(object):
         # native pow is pretty fast already
         return self.quot(pow(b, e, self.n))
 
+    def _precomp_wnaf(self, b, bInv, winsize):
+        tablen = 1 << (winsize - 2)
+        pctabP = [None] * tablen
+        pctabN = [None] * tablen
+        bSq = pow(b, 2, self.n)
+        bInvSq = pow(bInv, 2, self.n)
+        pctabP[0] = b
+        pctabN[0] = bInv
+        for i in range(1, tablen):
+            pctabP[i] = (pctabP[i-1] * bSq) % self.n
+            pctabN[i] = (pctabN[i-1] * bInvSq) % self.n
+        return (pctabP, pctabN)
+
+    def pow2_wnaf(self, b1, b1Inv, e1, b2, b2Inv, e2):
+        (pctabP1, pctabN1) = self._precomp_wnaf(b1, b1Inv, Defs.winsize)
+        (pctabP2, pctabN2) = self._precomp_wnaf(b2, b2Inv, Defs.winsize)
+
+        totlen = max(e1.bit_length(), e2.bit_length()) + 1
+        e1bits = _wnaf(e1, Defs.winsize, totlen)
+        e2bits = _wnaf(e2, Defs.winsize, totlen)
+
+        ret = 1
+        for (w1, w2) in zip(e1bits, e2bits):
+            if ret != 1:
+                ret = pow(ret, 2, self.n)
+
+            if w1 > 0:
+                ret = (ret * pctabP1[(w1-1)//2]) % self.n
+            elif w1 < 0:
+                ret = (ret * pctabN1[(-1-w1)//2]) % self.n
+
+            if w2 > 0:
+                ret = (ret * pctabP2[(w2-1)//2]) % self.n
+            elif w2 < 0:
+                ret = (ret * pctabN2[(-1-w2)//2]) % self.n
+
+        return self.quot(ret)
+
     def _precomp_wind2(self, b1, b2, winsize):
         ret = [1] * (2 ** (2 * winsize))
         winlen = 2 ** winsize
@@ -227,6 +281,19 @@ class RSAGroupOps(object):
         b12Inv = lutil.invert_modp(b1 * b2, self.n)
         return (self.quot((b2 * b12Inv) % self.n), self.quot((b1 * b12Inv) % self.n))
 
+    def inv5(self, b1, b2, b3, b4, b5):
+        b12 = (b1 * b2) % self.n
+        b34 = (b3 * b4) % self.n
+        b1234 = (b12 * b34) % self.n
+        b12345 = (b1234 * b5) % self.n
+
+        b12345Inv = lutil.invert_modp(b12345, self.n)
+        b1234Inv = (b12345Inv * b5) % self.n
+        b34Inv = (b1234Inv * b12) % self.n
+        b12Inv = (b1234Inv * b34) % self.n
+
+        return ((b12Inv * b2) % self.n, (b12Inv * b1) % self.n, (b34Inv * b4) % self.n, (b34Inv * b3) % self.n, (b12345Inv * b1234) % self.n)
+
     def rand_scalar(self):
         return self.prng.getrandbits(self.nbits_rand)
 
@@ -241,14 +308,28 @@ def main(nreps):
     t1 = RSAGroupOps(Defs.Grsa2048, 2048)
     t2 = RSAGroupOps(Grandom, 2048)
 
+    def test_pow2_wnaf():
+        "pow2_wnaf,RSA_chal,RSA_rand"
+
+        (b1, b2, e1, e2) = ( lutil.rand.getrandbits(2048) for _ in range(0, 4) )
+        (b1Inv, b2Inv)= t1.inv2(b1, b2)
+        out1 = t1.quot((pow(b1, e1, t1.n) * pow(b2, e2, t1.n)) % t1.n)
+        t1o = t1.pow2_wnaf(b1, b1Inv, e1, b2, b2Inv, e2)
+
+        (b1Inv, b2Inv)= t2.inv2(b1, b2)
+        out2 = t2.quot((pow(b1, e1, t2.n) * pow(b2, e2, t2.n)) % t2.n)
+        t2o = t2.pow2_wnaf(b1, b1Inv, e1, b2, b2Inv, e2)
+
+        return (out1 == t1o, out2 == t2o)
+
     def test_pow2():
         "pow2,RSA_chal,RSA_rand"
 
         (b1, b2, e1, e2) = ( lutil.rand.getrandbits(2048) for _ in range(0, 4) )
-        out1 = t1.quot((pow(b1, e1, Defs.Grsa2048.modulus) * pow(b2, e2, Defs.Grsa2048.modulus)) % Defs.Grsa2048.modulus)
+        out1 = t1.quot((pow(b1, e1, t1.n) * pow(b2, e2, t1.n)) % t1.n)
         t1o = t1.pow2(b1, e1, b2, e2)
 
-        out2 = t2.quot((pow(b1, e1, n) * pow(b2, e2, n)) % n)
+        out2 = t2.quot((pow(b1, e1, t2.n) * pow(b2, e2, t2.n)) % t2.n)
         t2o = t2.pow2(b1, e1, b2, e2)
 
         return (out1 == t1o, out2 == t2o)
@@ -258,11 +339,11 @@ def main(nreps):
 
         (e1, e2) = ( lutil.rand.getrandbits(2 * 2048 + Defs.chalbits + 2) for _ in range(0, 2) )
 
-        out1 = t1.quot((pow(2, e1, Defs.Grsa2048.modulus) * pow(3, e2, Defs.Grsa2048.modulus)) % Defs.Grsa2048.modulus)
+        out1 = t1.quot((pow(2, e1, t1.n) * pow(3, e2, t1.n)) % t1.n)
         t1o = t1.powgh(e1, e2)
 
         (e1_s, e2_s) = ( x >> (2048 + Defs.chalbits) for x in (e1, e2) )
-        out2 = t2.quot((pow(5, e1_s, n) * pow(7, e2_s, n)) % n)
+        out2 = t2.quot((pow(5, e1_s, t2.n) * pow(7, e2_s, t2.n)) % t2.n)
         t2o = t2.powgh(e1_s, e2_s)
 
         return (out1 == t1o, out2 == t2o)
@@ -272,15 +353,27 @@ def main(nreps):
 
         (e1, e2) = ( lutil.rand.getrandbits(2048) for _ in range(0, 2) )
         (e1Inv, e2Inv) = t1.inv2(e1, e2)
-        t1pass = t1.quot((e1 * e1Inv) % Defs.Grsa2048.modulus) == 1 and t1.quot((e2 * e2Inv) % Defs.Grsa2048.modulus) == 1
+        t1pass = t1.quot((e1 * e1Inv) % t1.n) == 1 and t1.quot((e2 * e2Inv) % t1.n) == 1
 
         (e1_s, e2_s) = ( x >> 1536 for x in (e1, e2) )
         (e1_sInv, e2_sInv) = t2.inv2(e1_s, e2_s)
-        t2pass = t2.quot((e1_s * e1_sInv) % n) == 1 and t2.quot((e2_s * e2_sInv) % n) == 1
+        t2pass = t2.quot((e1_s * e1_sInv) % t2.n) == 1 and t2.quot((e2_s * e2_sInv) % t2.n) == 1
 
         return (t1pass, t2pass)
 
-    tu.run_all_tests(nreps, "group_ops", test_pow2, test_powgh, test_inv2)
+    def test_inv5():
+        "inv5,RSA_chal,RSA_rand"
+
+        eVals = tuple( lutil.rand.getrandbits(2048) for _ in range(0, 5) )
+        eInvs = t1.inv5(*eVals)
+        t1pass = all( t1.quot((e * eInv) % t1.n) == 1 for (e, eInv) in zip(eVals, eInvs) )
+
+        eInvs = t2.inv5(*eVals)
+        t2pass = all( t2.quot((e * eInv) % t2.n) == 1 for (e, eInv) in zip(eVals, eInvs) )
+
+        return (t1pass, t2pass)
+
+    tu.run_all_tests(nreps, "group_ops", test_pow2_wnaf, test_pow2, test_powgh, test_inv2, test_inv5)
 
 if __name__ == "__main__":
     try:

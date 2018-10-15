@@ -31,15 +31,17 @@ class GooSigVerifier(object):
             # all group elements must be the "canonical" element of the quotient group (Z/n)/{1,-1}
             return False
 
-        # compute inverses of C1 and C2
-        (C1Inv, C2Inv) = self.gops.inv2(C1, C2)
+        # compute inverses of C1, C2, Aq, Bq, Cq
+        # NOTE: Since we're inverting C1 and C2, we can get inverses of Aq, Bq, Cq for ~free.
+        #       This lets us use signed-digit exponentiation below, which is much faster.
+        (C1Inv, C2Inv, AqInv, BqInv, CqInv) = self.gops.inv5(C1, C2, Aq, Bq, Cq)
 
         ###
         ### Step 1: reconstruct A, B, C, and D from signature
         ###
-        A = self.gops.mul(self.gops.pow2(Aq, ell, C2Inv, chal), self.gops.powgh(zp_w, zp_s1))
-        B = self.gops.mul(self.gops.pow2(Bq, ell, C2Inv, zp_w), self.gops.powgh(zp_w2, zp_s1w))
-        C = self.gops.mul(self.gops.pow2(Cq, ell, C1Inv, zp_a), self.gops.powgh(zp_an, zp_sa))
+        A = self.gops.mul(self.gops.pow2_wnaf(Aq, AqInv, ell, C2Inv, C2, chal), self.gops.powgh(zp_w, zp_s1))
+        B = self.gops.mul(self.gops.pow2_wnaf(Bq, BqInv, ell, C2Inv, C2, zp_w), self.gops.powgh(zp_w2, zp_s1w))
+        C = self.gops.mul(self.gops.pow2_wnaf(Cq, CqInv, ell, C1Inv, C1, zp_a), self.gops.powgh(zp_an, zp_sa))
 
         # make sure sign of (zp_w2 - zp_an) is positive
         zp_w2_m_an = zp_w2 - zp_an
