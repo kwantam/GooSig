@@ -8,8 +8,9 @@ def _gen_group_obj(n, g, h):
     return type('',(object,),{"modulus": n, "g": g, "h": h})()
 
 class Defs(object):
-    winsize = 6     # for RSA operations
-    combsize = 14   # for RSA operations
+    winsize = 6
+    max_comb_size = 4096
+
     hashfn = hashlib.sha256
     chalbits = 128  # V's challenge size
 

@@ -14,6 +14,99 @@ if sys.version_info[0] == 2:
     zip = itertools.izip    # pylint: disable=redefined-builtin,no-member
     range = xrange          # pylint: disable=redefined-builtin,undefined-variable
 
+def _from_win(vs):
+    ret = 0
+    for v in vs:
+        ret <<= 1
+        ret += 1 if v else 0
+    return ret
+
+class _CombPrecomp(list):
+    def __init__(self, g, combspec, gops):
+        (ppa, aps, nshifts, bpw, _, size) = combspec
+        self.gops = gops
+        self.points_per_add = ppa
+        self.adds_per_shift = aps
+        self.nshifts = nshifts
+        self.bits_per_window = bpw
+        self.nbits = bpw * ppa
+        nskip = 2 ** ppa - 1
+        self.points_per_subcomb = nskip
+
+        # allocate space
+        list.__init__(self, [None] * size)
+
+        # compute bottom comb
+        self[0] = g
+        for i in range(1, ppa):
+            oval = 1 << i
+            ival = oval // 2
+            self[oval - 1] = gops.pow(self[ival - 1], 1 << bpw)
+            for j in range(oval + 1, 2 * oval):
+                self[j - 1] = gops.mul(self[j - oval - 1], self[oval - 1])
+
+        # compute upper combs from bottom
+        powval = 1 << nshifts
+        for i in range(1, aps):
+            for j in range(0, nskip):
+                self[i * nskip + j] = gops.pow(self[i * nskip + j - nskip], powval)
+
+    def to_comb_exp(self, e):
+        ebits = list(lutil.num_to_bits(e, self.nbits))
+        nsh = self.nshifts
+        nsh_tot = self.adds_per_shift * self.points_per_add
+        ebits_split = [ ebits[j*nsh:(j+1)*nsh] for j in range(0, nsh_tot) ]
+        iters = []
+        for i in reversed(range(0, self.adds_per_shift)):
+            iters.append( _from_win(x) for x in zip(*( ebits_split[i + j*self.adds_per_shift] for j in range(0, self.points_per_add) )) )
+        return zip(*iters)
+
+    @staticmethod
+    def gen_opt_combs(nbits, maxsize=None):
+        # an "optimal" comb for a given #ops is the one that uses the least storage
+        #                   for a given storage size is the one that uses the least ops
+        opt_combs = {}
+
+        def _gen_comb_result(nshifts, adds_per_shift, points_per_add, bits_per_window):
+            nops = nshifts * (adds_per_shift + 1) - 1
+            size = (2 ** points_per_add - 1) * adds_per_shift
+            result = (points_per_add, adds_per_shift, nshifts, bits_per_window, nops, size)
+
+            best_so_far = opt_combs.get(nops, None)
+            if best_so_far is None or best_so_far[5] > size:
+                opt_combs[nops] = result
+
+        for points_per_add in range(2, 18):
+            bits_per_window = (nbits + points_per_add - 1) // points_per_add
+            for adds_per_shift in range(1, lutil.isqrt(bits_per_window) + 2):
+                if bits_per_window % adds_per_shift != 0:
+                    # only factorizations of bits_per_window are useful
+                    continue
+                nshifts = bits_per_window // adds_per_shift
+
+                _gen_comb_result(nshifts, adds_per_shift, points_per_add, bits_per_window)
+                _gen_comb_result(adds_per_shift, nshifts, points_per_add, bits_per_window)
+
+        ret_all = []
+        ret = None
+        sm = None
+        for nops in sorted(opt_combs.keys()):
+            opt_comb_val = opt_combs[nops]
+
+            if sm is not None and sm <= opt_comb_val[5]:
+                continue
+
+            sm = opt_comb_val[5]
+            ret_all.append(opt_comb_val)
+
+            if ret is None and maxsize is not None and opt_comb_val[5] <= maxsize:
+                ret = opt_comb_val
+                break
+
+        if maxsize is None:
+            return ret_all
+        return ret
+
 class RSAGroupOps(object):
     # NOTE you should use an RSA modulus whose factorization is unknown!
     #      In other words, *don't* just generate a modulus! defs.py provides
@@ -33,37 +126,24 @@ class RSAGroupOps(object):
         #       8192-bit RSA keys (i.e., a ~(2 * 8192 + chalbits + 1) sized comb)
         #       sized for the group of unknown order (see big_prod_size below)
         #
-        # Only P needs "big" and "small" combs; V just needs "tiny"
+        # P needs two comb sizes, V needs one
         #
-        combsize = Defs.combsize
-        self.combsize = combsize
         # figure out comb sizes
         if modbits is not None:
             # largest exponent P handles is the greater of
             #       chalbits + 2 * log2(P's RSA modulus) + 1
-            # and
             #       chalbits + log2(P's RSA modulus) + log2(n) + 1
-            big_prod_size = max(2 * modbits, modbits + lutil.clog2(self.n))
-            self.big_comb = combsize * ((big_prod_size + Defs.chalbits + combsize) // combsize)
-            # P has to do a bunch of arithmetic with exponents of size log2(|G|) for G this group
-            self.small_comb = combsize * ((lutil.clog2(self.n) + combsize - 1) // combsize)
-            self.tiny_comb = -1
+            big_nbits = max(2 * modbits, modbits + lutil.clog2(self.n)) + Defs.chalbits + 1
+            big_combspec = _CombPrecomp.gen_opt_combs(big_nbits, Defs.max_comb_size)
+            small_nbits = lutil.clog2(self.n)
+            small_combspec = _CombPrecomp.gen_opt_combs(small_nbits, Defs.max_comb_size)
+            self.combs = [(_CombPrecomp(self.g, small_combspec, self), _CombPrecomp(self.h, small_combspec, self))
+                         ,(_CombPrecomp(self.g, big_combspec, self), _CombPrecomp(self.h, big_combspec, self))
+                         ]
         else:
-            self.big_comb = self.small_comb = -1
-            # V's work is over tiny moduli, just chalbits long
-            self.tiny_comb = combsize * ((Defs.chalbits + 1 + combsize) // combsize)
-
-        # compute the combs
-        if modbits is not None:
-            self.gcomb_big = self._precomp_comb(self.g, self.big_comb)
-            self.hcomb_big = self._precomp_comb(self.h, self.big_comb)
-            self.gcomb_small = self._precomp_comb(self.g, self.small_comb)
-            self.hcomb_small = self._precomp_comb(self.h, self.small_comb)
-            self.gcomb_tiny = self.hcomb_tiny = None
-        else:
-            self.gcomb_big = self.gcomb_small = self.hcomb_big = self.hcomb_small = None
-            self.gcomb_tiny = self._precomp_comb(self.g, self.tiny_comb)
-            self.hcomb_tiny = self._precomp_comb(self.h, self.tiny_comb)
+            tiny_nbits = Defs.chalbits
+            tiny_combspec = _CombPrecomp.gen_opt_combs(tiny_nbits, Defs.max_comb_size)
+            self.combs = [(_CombPrecomp(self.g, tiny_combspec, self), _CombPrecomp(self.h, tiny_combspec, self))]
 
         if prng is None:
             # /dev/urandom
@@ -109,72 +189,34 @@ class RSAGroupOps(object):
             if win > 0:
                 ret = pow(ret, winlen, self.n)
 
-            e1val = self._from_win(islice(e1bits, Defs.winsize))
-            e2val = self._from_win(islice(e2bits, Defs.winsize))
+            e1val = _from_win(islice(e1bits, Defs.winsize))
+            e2val = _from_win(islice(e2bits, Defs.winsize))
 
             ret *= pctable[e1val + winlen * e2val]
             ret %= self.n
 
         return self.quot(ret)
 
-    @staticmethod
-    def _from_win(vs):
-        ret = 0
-        for v in vs:
-            ret <<= 1
-            ret += 1 if v else 0
-        return ret
-
-    def _precomp_comb(self, b, max_comb):
-        # first, make a "basic" comb
-        pow_bpc = 2 ** (max_comb // self.combsize)
-        comb_basic = [None] * self.combsize
-        comb_basic[0] = b
-        for i in range(1, self.combsize):
-            comb_basic[i] = pow(comb_basic[i-1], pow_bpc, self.n)
-
-        # next, make a "windowed" comb
-        comb_windowed = [None] * (2 ** self.combsize)
-        comb_windowed[0] = 1
-        for i in range(0, self.combsize):
-            p_off = 1 << i
-            comb_windowed[p_off] = comb_basic[i]
-            for j in range(p_off + 1, 2 * p_off):
-                comb_windowed[j] = (comb_windowed[j - p_off] * comb_windowed[p_off]) % self.n
-
-        return comb_windowed
-
-    def _to_comb_bits(self, e, max_comb):
-        ebits = list(lutil.num_to_bits(e, max_comb))
-        bpc = max_comb // self.combsize
-        comb_words_iter = zip(*( ebits[j*bpc:(j+1)*bpc] for j in range(0, self.combsize) ))
-        return ( self._from_win(x) for x in comb_words_iter )
-
     def powgh(self, e1, e2):
         loge = max(int(e1).bit_length(), int(e2).bit_length())
-        if loge <= self.tiny_comb:
-            max_comb = self.tiny_comb
-            gcomb = self.gcomb_tiny
-            hcomb = self.hcomb_tiny
-        elif loge <= self.small_comb:
-            max_comb = self.small_comb
-            gcomb = self.gcomb_small
-            hcomb = self.hcomb_small
-        elif loge <= self.big_comb:
-            max_comb = self.big_comb
-            gcomb = self.gcomb_big
-            hcomb = self.hcomb_big
-        else:
-            raise ValueError("got unexpectedly large exponent in powgh (%d > %d)" % (loge, self.big_comb))
-
-        e1bits = self._to_comb_bits(e1, max_comb)
-        e2bits = self._to_comb_bits(e2, max_comb)
+        gcomb = hcomb = None
+        for c in self.combs:
+            if loge <= c[0].nbits:
+                (gcomb, hcomb) = c
+                break
+        if gcomb is None or hcomb is None:
+            raise ValueError("got unexpectedly large exponent in powgh")
 
         ret = 1
-        for (e1v, e2v) in zip(e1bits, e2bits):
-            ret = pow(ret, 2, self.n)
-            ret = (ret * gcomb[e1v]) % self.n
-            ret = (ret * hcomb[e2v]) % self.n
+        for (e1vs, e2vs) in zip(gcomb.to_comb_exp(e1), hcomb.to_comb_exp(e2)):
+            if ret != 1:
+                ret = pow(ret, 2, self.n)
+
+            for (idx, (e1v, e2v)) in enumerate(zip(e1vs, e2vs)):
+                if e1v != 0:
+                    ret = (ret * gcomb[idx * gcomb.points_per_subcomb + e1v - 1]) % self.n
+                if e2v != 0:
+                    ret = (ret * hcomb[idx * hcomb.points_per_subcomb + e2v - 1]) % self.n
 
         return self.quot(ret)
 
