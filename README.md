@@ -38,6 +38,16 @@ Viewed as a signature scheme:
 This repository contains a reference implementation of GooSig called libGooPy. libGooPy is written
 in Python, and aims to be compatible with CPython 2 and 3, PyPy, and PyPy3.
 
+### running
+
+You can run a few tests with
+
+    python -m libGooPy [-a] [niters]
+
+`-a` enables all tests (otherwise only end-to-end tests run). `niters` sets the number of test iterations; 16 is the default.
+
+### interface
+
 libGooPy has a relatively simple interface: the [`GooSigSigner` class](libGooPy/sign.py) implements
 a signer, the [`GooSigVerifier` class](libGooPy/verify.py) a verifier.
 

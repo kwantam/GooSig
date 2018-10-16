@@ -2,6 +2,7 @@
 #
 # (C) 2018 Riad S. Wahby <rsw@cs.stanford.edu>
 
+import math
 import sys
 
 def show_one_result(name, fails, nreps):
@@ -23,6 +24,21 @@ def show_progress(failed):
         sys.stdout.write('\033[91m.\033[0m')
     else:
         sys.stdout.write('\033[92m.\033[0m')
+    sys.stdout.flush()
+
+def show_timing(tname, tvals, just=32):
+    mean = sum(tvals) / len(tvals)
+    samp_dev = math.sqrt(sum( pow(tval - mean, 2) for tval in tvals ) / max(1, len(tvals) - 1))
+    sys.stdout.write((u"\033[92m    \u23F1   %s\033[0m: " % tname).ljust(just))
+    sys.stdout.write(u"%2.2f ms, \u03c3=%2.2f ms, max=%2.2f ms, min=%2.2f ms\n" % (mean * 1000, samp_dev * 1000, max(tvals) * 1000, min(tvals) * 1000))
+
+def show_timing_pair(tname, pvvals):
+    (pvals, vvals) = pvvals
+    show_test("Timings for %s" % tname, 0)
+    sys.stdout.write('\n')
+    show_timing("Signing", pvals, 36)
+    show_timing("Verifying", vvals, 36)
+    sys.stdout.write('\n')
     sys.stdout.flush()
 
 def run_test(f, nreps):

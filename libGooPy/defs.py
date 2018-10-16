@@ -9,7 +9,7 @@ def _gen_group_obj(n, g, h):
 
 class Defs(object):
     winsize = 6
-    max_comb_size = 4096
+    max_comb_size = 512
 
     hashfn = hashlib.sha256
     chalbits = 128  # V's challenge size

@@ -4,6 +4,7 @@
 
 from __future__ import print_function
 import sys
+import time
 
 try:
     from libGooPy.defs import Defs
@@ -31,6 +32,9 @@ def main(run_submodules, nreps):
     gops_4096_p = lg.RSAGroupOps(Defs.Grsa2048, 4096)
     gops_4096_v = lg.RSAGroupOps(Defs.Grsa2048, None)
 
+    # keep rough time measuremnts
+    pv_times = [([], []), ([], [])]
+
     def test_sign_verify():
         "sign_and_verify,AOLx2048,RSAx4096"
 
@@ -43,14 +47,22 @@ def main(run_submodules, nreps):
             prv = GooSigSigner(p, q, gops_p)
             s = prv.gops.rand_scalar()
             C1 = prv.gops.powgh(p * q, s)
+            start_time = time.time()
             (C2, t, sigma) = prv.sign(C1, s, msg)
+            stop_time = time.time()
+            pv_times[idx][0].append(stop_time - start_time)
 
             ver = GooSigVerifier(gops_v)
+            start_time = time.time()
             res[idx] = ver.verify((C1, C2, t), msg, sigma)
+            stop_time = time.time()
+            pv_times[idx][1].append(stop_time - start_time)
 
         return res
 
     tu.run_all_tests(nreps, "end-to-end", test_sign_verify)
+    tu.show_timing_pair("4096-bit GOO, 2048-bit PK", pv_times[0])
+    tu.show_timing_pair("2048-bit GOO, 4096-bit PK", pv_times[1])
 
 if __name__ == "__main__":
     run_all = False
