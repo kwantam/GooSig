@@ -24,11 +24,11 @@ def clog2(val):
 def invert_modp(val, prime):
     if val % prime == 0:
         return 0
-    (inv, _) = ext_euclid(val % prime, prime)
+    inv = ext_euclid(val % prime, prime, left_only=True)
     assert (inv * val - 1) % prime == 0
     return inv % prime
 
-def ext_euclid(a, b):
+def ext_euclid(a, b, left_only=False):
     s  = t_ = 0
     s_ = t  = 1
     r  = a
@@ -36,9 +36,12 @@ def ext_euclid(a, b):
 
     while r != 0:
         ((quot, r), r_) = (divmod(r_, r), r)
-        (s_, s) = (s, s_ - quot * s)
         (t_, t) = (t, t_ - quot * t)
+        if not left_only:
+            (s_, s) = (s, s_ - quot * s)
 
+    if left_only:
+        return t_
     return (t_, s_)
 
 # compute Jacobi symbol, n prime or composite
