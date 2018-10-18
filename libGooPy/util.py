@@ -194,8 +194,8 @@ def is_prime_rm(n, nreps):
 
     return True
 
-# Baillie-PSW primality test (default #reps is massive overkill)
-def is_prime(n, nreps=8):
+# Baillie-PSW primality test (default #reps is overkill)
+def is_prime(n, nreps=2):
     return is_prime_rm(n, 16 * nreps) and is_prime_lucas(n, nreps)
 
 # Tonelli-Shanks
