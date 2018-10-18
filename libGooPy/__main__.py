@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#
 #
 # (C) 2018 Riad S. Wahby <rsw@cs.stanford.edu>
 
@@ -46,7 +46,7 @@ def main(run_submodules, nreps):
             (p, q) = lu.rand.sample(plist, 2)
             prv = GooSigSigner(p, q, gops_p)
             s = prv.gops.rand_scalar()
-            C1 = prv.gops.powgh(p * q, s)
+            C1 = prv.gops.reduce(prv.gops.powgh(p * q, s))
             start_time = time.time()
             (C2, t, sigma) = prv.sign(C1, s, msg)
             stop_time = time.time()

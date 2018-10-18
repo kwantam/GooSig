@@ -27,7 +27,7 @@ class GooSigVerifier(object):
         if t not in Defs.primes:
             # t must be one of the small primes in our list
             return False
-        if not all( self.gops.is_quot(b) for b in (C1, C2, Aq, Bq, Cq) ):
+        if not all( self.gops.is_reduced(b) for b in (C1, C2, Aq, Bq, Cq) ):
             # all group elements must be the "canonical" element of the quotient group (Z/n)/{1,-1}
             return False
 
@@ -39,9 +39,9 @@ class GooSigVerifier(object):
         ###
         ### Step 1: reconstruct A, B, C, and D from signature
         ###
-        A = self.gops.mul(self.gops.pow2_wnaf(Aq, AqInv, ell, C2Inv, C2, chal), self.gops.powgh(zp_w, zp_s1))
-        B = self.gops.mul(self.gops.pow2_wnaf(Bq, BqInv, ell, C2Inv, C2, zp_w), self.gops.powgh(zp_w2, zp_s1w))
-        C = self.gops.mul(self.gops.pow2_wnaf(Cq, CqInv, ell, C1Inv, C1, zp_a), self.gops.powgh(zp_an, zp_sa))
+        A = self.gops.reduce(self.gops.mul(self.gops.pow2(Aq, AqInv, ell, C2Inv, C2, chal), self.gops.powgh(zp_w, zp_s1)))
+        B = self.gops.reduce(self.gops.mul(self.gops.pow2(Bq, BqInv, ell, C2Inv, C2, zp_w), self.gops.powgh(zp_w2, zp_s1w)))
+        C = self.gops.reduce(self.gops.mul(self.gops.pow2(Cq, CqInv, ell, C1Inv, C1, zp_a), self.gops.powgh(zp_an, zp_sa)))
 
         # make sure sign of (zp_w2 - zp_an) is positive
         zp_w2_m_an = zp_w2 - zp_an

@@ -29,7 +29,7 @@ class GooSigSigner(object):
         # NOTE one assumes that s will have been encrypted to our public key.
         #      This function expects that s has already been decrypted.
         n = self.p * self.q
-        assert C1 == self.gops.powgh(n, s), "C1 does not appear to commit to our RSA modulus with opening s"
+        assert C1 == self.gops.reduce(self.gops.powgh(n, s)), "C1 does not appear to commit to our RSA modulus with opening s"
 
         ###
         ### Preliminaries: compute values P needs to run the ZKPOK
@@ -48,7 +48,7 @@ class GooSigSigner(object):
 
         # commitment to w
         s1 = self.gops.rand_scalar()
-        C2 = self.gops.powgh(w, s1)
+        C2 = self.gops.reduce(self.gops.powgh(w, s1))
 
         # inverses of C1 and C2
         (C1Inv, C2Inv) = self.gops.inv2(C1, C2)
@@ -60,9 +60,9 @@ class GooSigSigner(object):
         (r_w, r_w2, r_s1, r_a, r_an, r_s1w, r_sa) = ( self.gops.rand_scalar() for _ in range(0, 7) )
 
         # P's first message
-        A = self.gops.powgh(r_w, r_s1)
-        B = self.gops.mul(self.gops.pow(C2Inv, r_w), self.gops.powgh(r_w2, r_s1w))
-        C = self.gops.mul(self.gops.pow(C1Inv, r_a), self.gops.powgh(r_an, r_sa))
+        A = self.gops.reduce(self.gops.powgh(r_w, r_s1))
+        B = self.gops.reduce(self.gops.mul(self.gops.pow(C2Inv, C2, r_w), self.gops.powgh(r_w2, r_s1w)))
+        C = self.gops.reduce(self.gops.mul(self.gops.pow(C1Inv, C1, r_a), self.gops.powgh(r_an, r_sa)))
         D = r_w2 - r_an
 
         ###
@@ -83,9 +83,9 @@ class GooSigSigner(object):
         z_sa = chal * s * a + r_sa
 
         # compute quotient commitments
-        Aq = self.gops.powgh(z_w // ell, z_s1 // ell)
-        Bq = self.gops.mul(self.gops.pow(C2Inv, z_w // ell), self.gops.powgh(z_w2 // ell, z_s1w // ell))
-        Cq = self.gops.mul(self.gops.pow(C1Inv, z_a // ell), self.gops.powgh(z_an // ell, z_sa // ell))
+        Aq = self.gops.reduce(self.gops.powgh(z_w // ell, z_s1 // ell))
+        Bq = self.gops.reduce(self.gops.mul(self.gops.pow(C2Inv, C2, z_w // ell), self.gops.powgh(z_w2 // ell, z_s1w // ell)))
+        Cq = self.gops.reduce(self.gops.mul(self.gops.pow(C1Inv, C2, z_a // ell), self.gops.powgh(z_an // ell, z_sa // ell)))
         Dq = (z_w2 - z_an) // ell
 
         # compute z'
