@@ -5,6 +5,7 @@
 import sys
 
 import libGooPy.group_ops as lgops
+from libGooPy.consts import Grsa2048
 from libGooPy.defs import Defs
 import libGooPy.prng as lprng
 import libGooPy.util as lutil
@@ -19,7 +20,7 @@ class GooSigSigner(object):
         self.q = q
         if gops is None:
             modbits = lutil.clog2(p) + lutil.clog2(q)
-            gops = lgops.RSAGroupOps(Defs.Grsa2048, modbits)
+            gops = lgops.RSAGroupOps(Grsa2048, modbits)
         self.gops = gops
 
         assert lutil.is_prime(p)
@@ -68,7 +69,7 @@ class GooSigSigner(object):
         ###
         ### V's message: random challenge and random prime
         ###
-        (chal, ell) = lprng.fs_chal(self.gops.g, self.gops.h, self.gops.n, C1, C2, t, A, B, C, D, msg)
+        (chal, ell) = lprng.fs_chal(self.gops.desc, C1, C2, t, A, B, C, D, msg)
 
         ###
         ### P's second message: compute quotient message

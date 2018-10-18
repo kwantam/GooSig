@@ -10,6 +10,7 @@ class HashPRNG(object):
     def __init__(self, prng_key):
         self.prng = Defs.hashfn(b"libGooPy_prng,%s" % str(prng_key).encode("utf-8"))
         self.rnum = 0
+        self.r = 0
 
     def _next_rand(self):
         self.prng.update(b"%016x" % self.rnum)
@@ -17,15 +18,15 @@ class HashPRNG(object):
         return int(self.prng.hexdigest(), 16)
 
     def getrandbits(self, nbits):
-        r = 0
-        b = 0
+        r = self.r
+        b = r.bit_length()
         hashbits = self.prng.digest_size * 8
         while b < nbits:
             r <<= hashbits
             r += self._next_rand()
             b += hashbits
-        if b > nbits:
-            r >>= (b - nbits)
+        self.r = r & ((1 << (b - nbits)) - 1)
+        r >>= (b - nbits)
         return r
 
     def _randrange(self, maxval):

@@ -7,8 +7,6 @@ import math
 import random
 import sys
 
-import libGooPy.test_util as tu
-
 # python 2/3 hack
 if sys.version_info[0] == 2:
     range = xrange      # pylint: disable=redefined-builtin,undefined-variable
@@ -24,7 +22,7 @@ def clog2(val):
 def invert_modp(val, prime):
     if val % prime == 0:
         return 0
-    inv = ext_euclid(val % prime, prime, left_only=True)
+    (inv, _) = ext_euclid(val % prime, prime, left_only=True)
     assert (inv * val - 1) % prime == 0
     return inv % prime
 
@@ -41,8 +39,8 @@ def ext_euclid(a, b, left_only=False):
             (s_, s) = (s, s_ - quot * s)
 
     if left_only:
-        return t_
-    return (t_, s_)
+        return (t_, r_)
+    return (t_, s_, r_)
 
 # compute Jacobi symbol, n prime or composite
 def jacobi(a, n):
@@ -253,7 +251,7 @@ def sqrt_modn(x, p, q):
     if sqrtP is None or sqrtQ is None:
         return None
 
-    (mP, mQ) = ext_euclid(p, q)
+    (mP, mQ, _) = ext_euclid(p, q)
 
     return (sqrtQ * mP * p + sqrtP * mQ * q) % (p * q)
 
@@ -275,8 +273,8 @@ def overrides(interface_class):
     return overrider
 
 def main(nreps):
-    from libGooPy.defs import Defs
-    (p, q) = rand.sample(Defs.primes_2048, 2)
+    import libGooPy.test_util as tu
+    (p, q) = rand.sample(tu.primes_2048, 2)
     n = p * q
 
     def test_invert_modp():
@@ -296,15 +294,14 @@ def main(nreps):
         # find GCD of two random integers
         r1 = rand.getrandbits(256)
         r2 = rand.getrandbits(256)
-        (r1_e, r2_e) = ext_euclid(r1, r2)
-        d = r1 * r1_e + r2 * r2_e
+        (r1_e, r2_e, d) = ext_euclid(r1, r2)
 
         # r1d and r2d should now be relatively prime
         r1d = r1 // d
         r2d = r2 // d
-        (r1d_e, r2d_e) = ext_euclid(r1d, r2d)
+        (r1d_e, r2d_e, d2) = ext_euclid(r1d, r2d)
 
-        return (r1d * r1d_e + r2d * r2d_e - 1 == 0,)
+        return (d == r1 * r1_e + r2 * r2_e and d2 == 1 and r1d * r1d_e + r2d * r2d_e - 1 == 0,)
 
     def test_isqrt():
         "isqrt,test"
