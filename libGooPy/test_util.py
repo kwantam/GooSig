@@ -29,7 +29,7 @@ def show_progress(failed):
 def show_timing(tname, tvals, just=32):
     mean = sum(tvals) / len(tvals)
     samp_dev = math.sqrt(sum( pow(tval - mean, 2) for tval in tvals ) / max(1, len(tvals) - 1))
-    sys.stdout.write((u"\033[92m    \u23F1   %s\033[0m: " % tname).ljust(just))
+    sys.stdout.write((u"\033[92m \u25f7 %s\033[0m: " % tname).ljust(just))
     sys.stdout.write(u"%2.2f ms, \u03c3=%2.2f ms, max=%2.2f ms, min=%2.2f ms\n" % (mean * 1000, samp_dev * 1000, max(tvals) * 1000, min(tvals) * 1000))
 
 def show_timing_pair(tname, pvvals):

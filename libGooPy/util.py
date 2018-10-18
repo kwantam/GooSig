@@ -35,10 +35,9 @@ def ext_euclid(a, b):
     r_ = b
 
     while r != 0:
-        q = r_ // r
-        (r_, r) = (r, r_ - q * r)
-        (s_, s) = (s, s_ - q * s)
-        (t_, t) = (t, t_ - q * t)
+        ((quot, r), r_) = (divmod(r_, r), r)
+        (s_, s) = (s, s_ - quot * s)
+        (t_, t) = (t, t_ - quot * t)
 
     return (t_, s_)
 
