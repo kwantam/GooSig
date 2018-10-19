@@ -3,6 +3,7 @@
 # (C) 2018 Riad S. Wahby <rsw@cs.stanford.edu>
 
 from libGooPy.defs import Defs
+import libGooPy.primes as lprimes
 import libGooPy.util as lutil
 
 # NOTE AES-CTR is almost certainly much faster, but this sticks to the Python stdlib
@@ -56,6 +57,6 @@ def fs_chal(*args):
     prng_key = fs_hash.hexdigest()
     fs_hash_prng = HashPRNG(prng_key)
     chal = fs_hash_prng.getrandbits(Defs.chalbits)
-    ell = lutil.random_prime(Defs.chalbits, fs_hash_prng)
+    ell = lprimes.fouque_tibouchi_primegen(Defs.ft_prime_opts, fs_hash_prng)
 
     return (chal, ell)

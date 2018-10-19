@@ -7,6 +7,7 @@ import sys
 import libGooPy.group_ops as lgops
 from libGooPy.consts import Grsa2048
 from libGooPy.defs import Defs
+import libGooPy.primes as lprimes
 import libGooPy.prng as lprng
 import libGooPy.util as lutil
 
@@ -23,8 +24,8 @@ class GooSigSigner(object):
             gops = lgops.RSAGroupOps(Grsa2048, modbits)
         self.gops = gops
 
-        assert lutil.is_prime(p)
-        assert lutil.is_prime(q)
+        assert lprimes.is_prime(p)
+        assert lprimes.is_prime(q)
 
     def sign(self, C1, s, msg):
         # NOTE one assumes that s will have been encrypted to our public key.

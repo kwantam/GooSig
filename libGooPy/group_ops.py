@@ -7,6 +7,7 @@ import sys
 
 from libGooPy.defs import Defs
 from libGooPy.group_mixins import _CombMixin, _WnafMixin, _RandMixin
+import libGooPy.primes as lprimes
 import libGooPy.util as lutil
 
 # python 2/3 hack
@@ -72,7 +73,7 @@ class RSAGroupOps(_RandMixin, _WnafMixin, _CombMixin):
 class ClassGroupOps(_RandMixin, _WnafMixin, _CombMixin):
     def __init__(self, Gdesc, modbits=None, prng=None):
         self.D = Gdesc.disc
-        assert self.D < 0 and self.D % 4 == 1 and lutil.is_prime(-self.D)
+        assert self.D < 0 and self.D % 4 == 1 and lprimes.is_prime(-self.D)
         self.g = Gdesc.g
         self.h = Gdesc.h
         self.id = Gdesc.id
@@ -139,7 +140,7 @@ class ClassGroupOps(_RandMixin, _WnafMixin, _CombMixin):
             Bx = m * b
             By = u1 // G
         else:
-            (y, G) = lutil.ext_euclid(s, F, left_only=True)
+            (y, _, G) = lutil.ext_euclid(s, F, do_left=True, do_right=False)
             assert (G - y *s) % F == 0
             H = F // G
             By = u1 // G
@@ -190,7 +191,7 @@ class ClassGroupOps(_RandMixin, _WnafMixin, _CombMixin):
         (u, v, w) = m
 
         # Step 1
-        (y, G) = lutil.ext_euclid(v, u, left_only=True)
+        (y, _, G) = lutil.ext_euclid(v, u, do_left=True, do_right=False)
         (By, Dy) = (u // G, v // G)
 
         # Step 2

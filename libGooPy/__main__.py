@@ -11,15 +11,16 @@ try:
     import libGooPy.group_ops as lg
     from libGooPy.sign import GooSigSigner
     import libGooPy.test_util as tu
-    import libGooPy.util as lu
+    import libGooPy.util as lutil
     from libGooPy.verify import GooSigVerifier
-except:
+except Exception as e:  # pylint: disable=broad-except
     print("ERROR: Could not import libGooPy. Try invoking as `python -m libGooPy`.")
+    print(str(e))
     sys.exit(1)
 
 def main(run_submodules, nreps):
     if run_submodules:
-        lu.main(nreps)
+        lutil.main(nreps)
         lg.main(nreps)
 
     # reuse Gops throughout. Notice that you can reuse gops for different
@@ -62,7 +63,7 @@ def main(run_submodules, nreps):
         res = [None] * len(pv_times)
         for (idx, (msg, gops_p, gops_v)) in enumerate(pv_expts):
             # random Signer modulus
-            (p, q) = lu.rand.sample(pv_plsts[idx % 2], 2)
+            (p, q) = lutil.rand.sample(pv_plsts[idx % 2], 2)
             prv = GooSigSigner(p, q, gops_p)
             # commit to Signer modulus
             s = prv.gops.rand_scalar()

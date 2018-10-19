@@ -22,11 +22,11 @@ def clog2(val):
 def invert_modp(val, prime):
     if val % prime == 0:
         return 0
-    (inv, _) = ext_euclid(val % prime, prime, left_only=True)
+    (inv, _, _) = ext_euclid(val % prime, prime, do_left=True, do_right=False)
     assert (inv * val - 1) % prime == 0
     return inv % prime
 
-def ext_euclid(a, b, left_only=False):
+def ext_euclid(a, b, do_left=True, do_right=True):
     s  = t_ = 0
     s_ = t  = 1
     r  = a
@@ -34,13 +34,22 @@ def ext_euclid(a, b, left_only=False):
 
     while r != 0:
         ((quot, r), r_) = (divmod(r_, r), r)
-        (t_, t) = (t, t_ - quot * t)
-        if not left_only:
+        if do_left:
+            (t_, t) = (t, t_ - quot * t)
+        if do_right:
             (s_, s) = (s, s_ - quot * s)
 
-    if left_only:
-        return (t_, r_)
+    if not do_left:
+        t_ = None
+    if not do_right:
+        s_ = None
     return (t_, s_, r_)
+
+def num_to_bits(n, pad=None):
+    bit_iter = ( b == "1" for b in bin(int(n))[2:] )
+    if pad is None:
+        return bit_iter
+    return chain(( False for _ in range(0, pad - n.bit_length()) ), bit_iter)
 
 # compute Jacobi symbol, n prime or composite
 def jacobi(a, n):
@@ -83,18 +92,6 @@ def isqrt(n):
 
     return res
 
-def is_square(n):
-    isqn = isqrt(n)
-    if isqn * isqn == n:
-        return True
-    return False
-
-def num_to_bits(n, pad=None):
-    bit_iter = ( b == "1" for b in bin(int(n))[2:] )
-    if pad is None:
-        return bit_iter
-    return chain(( False for _ in range(0, pad - n.bit_length()) ), bit_iter)
-
 def factor_twos(n):
     d = n
     s = 0
@@ -102,99 +99,6 @@ def factor_twos(n):
         d //= 2
         s += 1
     return (d, s)
-
-def is_prime_lucas(n, nreps):
-    if is_square(n):
-        return False
-
-    half = invert_modp(2, n)
-    if (2 * half) % n != 1:
-        return False
-
-    (d, s) = factor_twos(n + 1)
-    dbits = num_to_bits(d)
-    msbit = next(dbits)
-    assert msbit
-    dbits = list(dbits)
-
-    def lucas_double(u, v, Qk):
-        u = (u * v) % n
-        v = (v ** 2 - 2 * Qk) % n
-        Qk = (Qk * Qk) % n
-        return (u, v, Qk)
-
-    def lucas_add1(u, v, Qk, D):
-        (u, v) = (((u + v) * half) % n, ((D * u + v) * half) % n)
-        Qk = (Qk * Q) % n
-        return (u, v, Qk)
-
-    i = 0
-    for _ in range(0, nreps):
-        while True:
-            i += 1
-            D = pow(-1, i + 1) * (3 + 2 * i)
-            if jacobi(D, n) == -1:
-                break
-        Q = (1 - D) // 4
-
-        (u, v, Qk) = (1, 1, Q)
-        for db in dbits:
-            (u, v, Qk) = lucas_double(u, v, Qk)
-            if db:
-                (u, v, Qk) = lucas_add1(u, v, Qk, D)
-
-        # now we have Ud and Vd
-        if u % n == 0:
-            continue
-
-        # check V_{d*2^r}, 0 <= r < s
-        cont = False
-        for _ in range(0, s):
-            if v % n == 0:
-                cont = True
-                break
-            (u, v, Qk) = lucas_double(u, v, Qk)
-
-        if cont:
-            continue
-
-        return False
-
-    return True
-
-# Rabin-Miller
-def is_prime_rm(n, nreps):
-    if n < 7:
-        if n in (3, 5):
-            return True
-        return False
-
-    (d, r) = factor_twos(n - 1)
-
-    for _ in range(0, nreps):
-        a = int(rand.randint(2, n - 2))
-        x = pow(a, d, n)
-
-        if x in (1, n-1):
-            continue
-
-        cont = False
-        for _ in range(0, r - 1):
-            x = pow(x, 2, n)
-            if x == n - 1:
-                cont = True
-                break
-
-        if cont:
-            continue
-
-        return False
-
-    return True
-
-# Baillie-PSW primality test (default #reps is overkill)
-def is_prime(n, nreps=2):
-    return is_prime_rm(n, 16 * nreps) and is_prime_lucas(n, nreps)
 
 # Tonelli-Shanks
 def sqrt_modp(n, p):
@@ -254,16 +158,6 @@ def sqrt_modn(x, p, q):
     (mP, mQ, _) = ext_euclid(p, q)
 
     return (sqrtQ * mP * p + sqrtP * mQ * q) % (p * q)
-
-def random_prime(nbits, rng=None):
-    if rng is None:
-        rng = rand
-    p = 1
-    while p.bit_length() != nbits or not is_prime(p):
-        p = rng.getrandbits(nbits) | 1
-        while p.bit_length() == nbits and not is_prime(p):
-            p += 2
-    return p
 
 # from https://stackoverflow.com/questions/1167617/in-python-how-do-i-indicate-im-overriding-a-method
 def overrides(interface_class):
