@@ -28,7 +28,7 @@ class RSAGroupOps(_RandMixin, _WnafMixin, _CombMixin):
 
         _RandMixin.__init__(self, lutil.clog2(self.n) - 1, prng)
         _WnafMixin.__init__(self, False)
-        _CombMixin.__init__(self, modbits)
+        _CombMixin.__init__(self, Defs.max_rsa_comb_size, modbits)
 
     def reduce(self, b):
         # compute the representative of (Z/n)/{1,-1}, i.e., min(|b|, n-|b|)
@@ -80,13 +80,10 @@ class ClassGroupOps(_RandMixin, _WnafMixin, _CombMixin):
         assert self.L ** 4 <= -self.D and (self.L + 1) ** 4 > -self.D
         self.desc = (self.D, self.g, self.h)
 
-        # number of random bits for exponents; NOTE shouldn't we halve this?
+        # number of random bits for exponents; NOTE should we halve this?
         _RandMixin.__init__(self, lutil.clog2(self.D) - 1, prng)
         _WnafMixin.__init__(self, True)
-        # NOTE hack
-        (old_comb_size, Defs.max_comb_size) = (Defs.max_comb_size, 32)
-        _CombMixin.__init__(self, modbits)
-        Defs.max_comb_size = old_comb_size
+        _CombMixin.__init__(self, Defs.max_bqf_comb_size, modbits)
 
     # Algorithm 5.4.2 of Cohen's "A Course in Computational Algebraic Number Theory"
     @staticmethod

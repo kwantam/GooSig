@@ -110,7 +110,7 @@ class _CombPrecomp(list):
         return ret
 
 class _CombMixin(object):
-    def __init__(self, modbits):
+    def __init__(self, max_comb_size, modbits):
         # combs for g and h
         # NOTE: you really want to store all combs on disk!
         #       I'd recommend having a telescope of combs supporting up to (say)
@@ -125,15 +125,15 @@ class _CombMixin(object):
             #       chalbits + 2 * log2(P's RSA modulus) + 1
             #       chalbits + log2(P's RSA modulus) + log2(n) + 1
             big_nbits = max(2 * modbits, modbits + self.nbits_rand) + Defs.chalbits + 1
-            big_combspec = _CombPrecomp.gen_opt_combs(big_nbits, Defs.max_comb_size)
+            big_combspec = _CombPrecomp.gen_opt_combs(big_nbits, max_comb_size)
             small_nbits = self.nbits_rand
-            small_combspec = _CombPrecomp.gen_opt_combs(small_nbits, Defs.max_comb_size)
+            small_combspec = _CombPrecomp.gen_opt_combs(small_nbits, max_comb_size)
             self.combs = [(_CombPrecomp(self.g, small_combspec, self), _CombPrecomp(self.h, small_combspec, self))
                          ,(_CombPrecomp(self.g, big_combspec, self), _CombPrecomp(self.h, big_combspec, self))
                          ]
         else:
             tiny_nbits = Defs.chalbits
-            tiny_combspec = _CombPrecomp.gen_opt_combs(tiny_nbits, Defs.max_comb_size)
+            tiny_combspec = _CombPrecomp.gen_opt_combs(tiny_nbits, max_comb_size)
             self.combs = [(_CombPrecomp(self.g, tiny_combspec, self), _CombPrecomp(self.h, tiny_combspec, self))]
 
     def powgh(self, e1, e2):

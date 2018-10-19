@@ -6,7 +6,8 @@ import hashlib
 
 class Defs(object):
     winsize = 6
-    max_comb_size = 512
+    max_rsa_comb_size = 512
+    max_bqf_comb_size = 64
 
     hashfn = hashlib.sha256
     chalbits = 128  # V's challenge size

@@ -23,44 +23,57 @@ def main(run_submodules, nreps):
         lg.main(nreps)
 
     # reuse Gops throughout. Notice that you can reuse gops for different
-    # Signer modulus as long as the *size* of the Signer's modulus stays the same.
+    # Signer modulus as long as the *size* of the Signer's modulus is no
+    # larger than the one the gops object was built for.
     #
-    # group ops to support 2048-bit Signer modulus and 4096-bit AOL root cert group
-    gops_2048_p = lg.RSAGroupOps(lc.Gaol, 2048)
-    gops_2048_v = lg.RSAGroupOps(lc.Gaol, None)
-    # group ops to support 4096-bit Signer modulus and 2048-bit RSA challenge group
-    gops_4096_p = lg.RSAGroupOps(lc.Grsa2048, 4096)
-    gops_4096_v = lg.RSAGroupOps(lc.Grsa2048, None)
-    # group ops to support 2048-bit Signer modulus and 2048-bit class group discriminant
+    # 4096-bit GoUO
+    gops_4_2_p = lg.RSAGroupOps(lc.Gaol, 2048)          # 4096-bit RSA GoUO, 2048-bit Signer key
+    gops_4_4_p = lg.RSAGroupOps(lc.Gaol, 4096)          # 4096-bit RSA GoUO, 4096-bit Signer key
+    gops_4_v = lg.RSAGroupOps(lc.Gaol, None)            # 4096-bit RSA GoUO (verification)
+    # 2048-bit GoUO
+    gops_2_2_p = lg.RSAGroupOps(lc.Grsa2048, 2048)      # 2048-bit RSA GoUO, 2048-bit Signer key
+    gops_2_4_p = lg.RSAGroupOps(lc.Grsa2048, 4096)      # 2048-bit RSA GoUO, 4096-bit Signer key
+    gops_2_v = lg.RSAGroupOps(lc.Grsa2048, None)        # 2048-bit RSA GoUO (verification)
+    # 2048-bit BQF discriminant
+    gops_c2_2_p = lg.ClassGroupOps(lc.Ggoo2048, 2048)   # 2048-bit BQF GoUO, 2048-bit Signer key
+    gops_c2_4_p = lg.ClassGroupOps(lc.Ggoo2048, 4096)   # 2048-bit BQF GoUO, 4096-bit Signer key
+    gops_c2_v = lg.ClassGroupOps(lc.Ggoo2048, None)     # 2048-bit BQF GoUO (verification)
+    # 1024-bit BQF discriminant
+    gops_c1_2_p = lg.ClassGroupOps(lc.Ggoo1024, 2048)   # 1024-bit BQF GoUO, 2048-bit Signer key
+    gops_c1_4_p = lg.ClassGroupOps(lc.Ggoo1024, 4096)   # 1024-bit BQF GoUO, 2048-bit Signer key
+    gops_c1_v = lg.ClassGroupOps(lc.Ggoo1024, None)     # 1024-bit BQF GoUO, 4096-bit Signer key
 
-    gops_c2048_p = lg.ClassGroupOps(lc.Ggoo2048, 2048)
-    gops_c2048_v = lg.ClassGroupOps(lc.Ggoo2048, None)
-    # group ops to support 4096-bit Signer modulus and 1024-bit class group discriminant
-    gops_c4096_p = lg.ClassGroupOps(lc.Ggoo1024, 4096)
-    gops_c4096_v = lg.ClassGroupOps(lc.Ggoo1024, None)
-
-    # keep rough time measuremnts
-    pv_times = [ ([], []) for _ in range(0, 4) ]
+    # measure times
+    pv_expts = [ ("4096-bit RSA GoUO, 2048-bit Signer PK", gops_4_2_p, gops_4_v)
+               , ("4096-bit RSA GoUO, 4096-bit Signer PK", gops_4_4_p, gops_4_v)
+               , ("2048-bit RSA GoUO, 2048-bit Signer PK", gops_2_2_p, gops_2_v)
+               , ("2048-bit RSA GoUO, 4096-bit Signer PK", gops_2_4_p, gops_2_v)
+               , ("2048-bit BQF GoUO, 2048-bit Signer PK", gops_c2_2_p, gops_c2_v)
+               , ("2048-bit BQF GoUO, 4096-bit Signer PK", gops_c2_4_p, gops_c2_v)
+               , ("1024-bit BQF GoUO, 2048-bit Signer PK", gops_c1_2_p, gops_c1_v)
+               , ("1024-bit BQF GoUO, 4096-bit Signer PK", gops_c1_4_p, gops_c1_v)
+               ]
+    pv_times = [ ([], []) for _ in range(0, len(pv_expts)) ]
+    pv_plsts = [tu.primes_1024, tu.primes_2048]
 
     def test_sign_verify():
-        "sign_and_verify,AOLx2048,RSAx4096,Goo2048x2048,Goo1024x4096"
+        "sign_and_verify,4x2,4x4,2x2,2x4,c2x2,c2x4,c1x2,c1x4"
 
         res = [None] * len(pv_times)
-        for (idx, (plist, msg, gops_p, gops_v)) in \
-                enumerate(( (tu.primes_1024, "AOL group, 2048-bit RSA key. Test #1.", gops_2048_p, gops_2048_v) \
-                          , (tu.primes_2048, "RSA group, 4096-bit RSA key. Test #2.", gops_4096_p, gops_4096_v) \
-                          , (tu.primes_1024, "CG |d|=2048, 2048-bit RSA key. Test #3.", gops_c2048_p, gops_c2048_v) \
-                          , (tu.primes_2048, "CG |d|=1024, 4096-bit RSA key. Test #4.", gops_c4096_p, gops_c4096_v) \
-                          )):
-            (p, q) = lu.rand.sample(plist, 2)
+        for (idx, (msg, gops_p, gops_v)) in enumerate(pv_expts):
+            # random Signer modulus
+            (p, q) = lu.rand.sample(pv_plsts[idx % 2], 2)
             prv = GooSigSigner(p, q, gops_p)
+            # commit to Signer modulus
             s = prv.gops.rand_scalar()
             C1 = prv.gops.reduce(prv.gops.powgh(p * q, s))
+            # run the proof
             start_time = time.time()
             (C2, t, sigma) = prv.sign(C1, s, msg)
             stop_time = time.time()
             pv_times[idx][0].append(stop_time - start_time)
 
+            # verify the proof
             ver = GooSigVerifier(gops_v)
             start_time = time.time()
             res[idx] = ver.verify((C1, C2, t), msg, sigma)
@@ -70,10 +83,8 @@ def main(run_submodules, nreps):
         return res
 
     tu.run_all_tests(nreps, "end-to-end", test_sign_verify)
-    tu.show_timing_pair("4096-bit RSA GoUO, 2048-bit PK", pv_times[0])
-    tu.show_timing_pair("2048-bit RSA GoUO, 4096-bit PK", pv_times[1])
-    tu.show_timing_pair(u"CG w/2048-bit \u0394, 2048-bit PK", pv_times[2])
-    tu.show_timing_pair(u"CG w/1024-bit \u0394, 4096-bit PK", pv_times[3])
+    for ((n, _, _), t) in zip(pv_expts, pv_times):
+        tu.show_timing_pair(n, t)
 
 if __name__ == "__main__":
     run_all = False
