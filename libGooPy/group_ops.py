@@ -140,7 +140,7 @@ class ClassGroupOps(_RandMixin, _WnafMixin, _CombMixin):
             Bx = m * b
             By = u1 // G
         else:
-            (y, _, G) = lutil.ext_euclid(s, F, do_left=True, do_right=False)
+            (y, _, G) = lutil.ext_euclid(s, F, do_right=False)
             assert (G - y *s) % F == 0
             H = F // G
             By = u1 // G
@@ -191,7 +191,7 @@ class ClassGroupOps(_RandMixin, _WnafMixin, _CombMixin):
         (u, v, w) = m
 
         # Step 1
-        (y, _, G) = lutil.ext_euclid(v, u, do_left=True, do_right=False)
+        (y, _, G) = lutil.ext_euclid(v, u, do_right=False)
         (By, Dy) = (u // G, v // G)
 
         # Step 2

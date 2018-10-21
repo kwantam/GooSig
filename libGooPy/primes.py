@@ -176,7 +176,7 @@ def primeprod_and_carmichael(nbits):
         (prod_, carm_) = (prod, carm)
         np = next(p)
         prod *= np
-        carm = (carm * (np - 1)) // lutil.ext_euclid(carm, np - 1, do_left=False, do_right=False)[2]
+        carm = (carm * (np - 1)) // lutil.gcd(carm, np - 1)
         if prod.bit_length() > nbits:
             return (prod_, carm_)
 

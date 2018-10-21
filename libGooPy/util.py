@@ -22,26 +22,27 @@ def clog2(val):
 def invert_modp(val, prime):
     if val % prime == 0:
         return 0
-    (inv, _, _) = ext_euclid(val % prime, prime, do_left=True, do_right=False)
+    (inv, _, _) = ext_euclid(val % prime, prime, do_right=False)
     assert (inv * val - 1) % prime == 0
     return inv % prime
 
-def ext_euclid(a, b, do_left=True, do_right=True):
-    s  = t_ = 0
-    s_ = t  = 1
-    r  = a
-    r_ = b
+def gcd(a, b):
+    if sys.version_info[0] == 3:
+        return math.gcd(a, b)   # pylint: disable=no-member
+    while b != 0:
+        (a, b) = (b, a % b)
+    return a
+
+def ext_euclid(a, b, do_right=True):
+    (t, t_, r, r_) = (1, 0, a, b)
 
     while r != 0:
         ((quot, r), r_) = (divmod(r_, r), r)
-        if do_left:
-            (t_, t) = (t, t_ - quot * t)
-        if do_right:
-            (s_, s) = (s, s_ - quot * s)
+        (t_, t) = (t, t_ - quot * t)
 
-    if not do_left:
-        t_ = None
-    if not do_right:
+    if do_right:
+        s_ = (r_ - a * t_) // b
+    else:
         s_ = None
     return (t_, s_, r_)
 
@@ -183,11 +184,12 @@ def main(nreps):
         return ((r * rInv - 1) % p == 0, (r2 * r2Inv - 1) % n == 0)
 
     def test_ext_euclid():
-        "ext_euclid,gcd"
+        "ext_euclid,gcd,gcdext"
 
         # find GCD of two random integers
         r1 = rand.getrandbits(256)
         r2 = rand.getrandbits(256)
+        d_ = gcd(r1, r2)
         (r1_e, r2_e, d) = ext_euclid(r1, r2)
 
         # r1d and r2d should now be relatively prime
@@ -195,7 +197,7 @@ def main(nreps):
         r2d = r2 // d
         (r1d_e, r2d_e, d2) = ext_euclid(r1d, r2d)
 
-        return (d == r1 * r1_e + r2 * r2_e and d2 == 1 and r1d * r1d_e + r2d * r2d_e - 1 == 0,)
+        return (d_ == d, d == r1 * r1_e + r2 * r2_e and d2 == 1 and r1d * r1d_e + r2d * r2d_e - 1 == 0)
 
     def test_isqrt():
         "isqrt,test"
