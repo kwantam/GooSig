@@ -21,8 +21,10 @@ def clog2(val):
 
 def invert_modp(val, prime):
     if val % prime == 0:
-        return 0
-    (inv, _) = ext_euclid_l(val % prime, prime)
+        return None
+    (inv, d) = ext_euclid_l(val % prime, prime)
+    if d != 1:
+        return None
     assert (inv * val - 1) % prime == 0
     return inv % prime
 

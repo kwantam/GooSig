@@ -62,10 +62,7 @@ def is_square(n):
     return False
 
 def is_prime_lucas(n, nreps):
-    if is_square(n):
-        return False
-
-    half = lutil.invert_modp(2, n)
+    half = (n + 1) // 2
     if (2 * half) % n != 1:
         return False
 
@@ -87,12 +84,17 @@ def is_prime_lucas(n, nreps):
         return (u, v, Qk)
 
     i = 0
+    ilim = 20
     for _ in range(0, nreps):
         while True:
+            if i == ilim:
+                if is_square(n):
+                    return False
             i += 1
             D = pow(-1, i + 1) * (3 + 2 * i)
             if lutil.jacobi(D, n) == -1:
                 break
+        ilim = -1
         Q = (1 - D) // 4
 
         (u, v, Qk) = (1, 1, Q)
