@@ -22,7 +22,7 @@ def clog2(val):
 def invert_modp(val, prime):
     if val % prime == 0:
         return 0
-    (inv, _, _) = ext_euclid(val % prime, prime, do_right=False)
+    (inv, _) = ext_euclid_l(val % prime, prime)
     assert (inv * val - 1) % prime == 0
     return inv % prime
 
@@ -33,18 +33,45 @@ def gcd(a, b):
         (a, b) = (b, a % b)
     return a
 
-def ext_euclid(a, b, do_right=True):
+def ext_euclid_l(a, b):
     (t, t_, r, r_) = (1, 0, a, b)
 
     while r != 0:
         ((quot, r), r_) = (divmod(r_, r), r)
         (t_, t) = (t, t_ - quot * t)
 
-    if do_right:
-        s_ = (r_ - a * t_) // b
-    else:
-        s_ = None
-    return (t_, s_, r_)
+    return (t_, r_)
+
+_q_storage = [None] * 65536
+def ext_euclid_lr(a, b):
+    (r, r_) = (a, b)
+    idx = 0
+
+    # compute GCD, store quotients
+    while r_ != 0:
+        ((_q_storage[idx], r_), r) = (divmod(r, r_), r_)
+        idx += 1
+
+    # use quotients to reconstruct Bezout coefficients
+    (s, t, imod) = (1, -1, idx % 2)
+    for jdx in reversed(range(imod, idx, 2)):
+        s = s - t * _q_storage[jdx+1]
+        t = t - s * _q_storage[jdx]
+    if imod == 1:
+        s = s - t * _q_storage[0]
+        (s, t) = (t, s)
+
+    if r < 0:
+        # make sure gcd is positive
+        (r, s, t) = (-r, -s, -t)
+    if abs(a) != r and abs(b) != r:
+        # reduce Bezout coefficients
+        tmod = abs(a // r)
+        smod = abs(b // r)
+        t = t % tmod - (tmod if t < 0 else 0)
+        s = s % smod - (smod if s < 0 else 0)
+    assert a*s + b*t == r, "%d * %d + %d * %d != %d" % (a, s, b, t, r)
+    return (s, t, r)
 
 def num_to_bits(n, pad=None):
     bit_iter = ( b == "1" for b in bin(int(n))[2:] )
@@ -156,7 +183,7 @@ def sqrt_modn(x, p, q):
     if sqrtP is None or sqrtQ is None:
         return None
 
-    (mP, mQ, _) = ext_euclid(p, q)
+    (mP, mQ, _) = ext_euclid_lr(p, q)
 
     return (sqrtQ * mP * p + sqrtP * mQ * q) % (p * q)
 
@@ -190,12 +217,12 @@ def main(nreps):
         r1 = rand.getrandbits(256)
         r2 = rand.getrandbits(256)
         d_ = gcd(r1, r2)
-        (r1_e, r2_e, d) = ext_euclid(r1, r2)
+        (r1_e, r2_e, d) = ext_euclid_lr(r1, r2)
 
         # r1d and r2d should now be relatively prime
         r1d = r1 // d
         r2d = r2 // d
-        (r1d_e, r2d_e, d2) = ext_euclid(r1d, r2d)
+        (r1d_e, r2d_e, d2) = ext_euclid_lr(r1d, r2d)
 
         return (d_ == d, d == r1 * r1_e + r2 * r2_e and d2 == 1 and r1d * r1d_e + r2d * r2d_e - 1 == 0)
 

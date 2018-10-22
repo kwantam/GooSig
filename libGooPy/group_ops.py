@@ -131,7 +131,7 @@ class ClassGroupOps(_RandMixin, _WnafMixin, _CombMixin):
         m = v2 - s
 
         # Step 2
-        (c, b, F) = lutil.ext_euclid(u1, u2)
+        (c, b, F) = lutil.ext_euclid_lr(u1, u2)
         assert u1 * c + u2 * b == F
 
         # Steps 2--4
@@ -140,7 +140,7 @@ class ClassGroupOps(_RandMixin, _WnafMixin, _CombMixin):
             Bx = m * b
             By = u1 // G
         else:
-            (y, _, G) = lutil.ext_euclid(s, F, do_right=False)
+            (y, G) = lutil.ext_euclid_l(s, F)
             assert (G - y *s) % F == 0
             H = F // G
             By = u1 // G
@@ -153,11 +153,9 @@ class ClassGroupOps(_RandMixin, _WnafMixin, _CombMixin):
         Dy = s // G
 
         # Step 5 (truncated Euclidean division)
-        bx = Bx % By
-        by = By
-        x = 1
-        y = z = 0
-        while abs(by) > self.L and bx != 0:
+        (bx, by) = (Bx % By, By)
+        (x, y, z) = (1, 0, 0)
+        while bx != 0 and abs(by) > self.L:
             ((q, bx), by) = (divmod(by, bx), bx)
             (y, x) = (x, y - q * x)
             z += 1
@@ -191,18 +189,16 @@ class ClassGroupOps(_RandMixin, _WnafMixin, _CombMixin):
         (u, v, w) = m
 
         # Step 1
-        (y, _, G) = lutil.ext_euclid(v, u, do_right=False)
+        (y, G) = lutil.ext_euclid_l(v, u)
         (By, Dy) = (u // G, v // G)
 
         # Step 2
         Bx = (y * w) % By
 
         # Step 3
-        bx = Bx
-        by = By
-        x = 1
-        y = z = 0
-        while abs(by) > self.L and bx != 0:
+        (bx, by) = (Bx, By)
+        (x, y, z) = (1, 0, 0)
+        while bx != 0 and abs(by) > self.L:
             ((q, bx), by) = (divmod(by, bx), bx)
             (y, x) = (x, y - q * x)
             z += 1
