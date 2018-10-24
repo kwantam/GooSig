@@ -1,4 +1,8 @@
-- Let G be a group of unknown order.
+######################
+# "Complex" protocol #
+######################
+
+- Let G be a group of unknown order with no known low-order elements.
 
 - Let g,h in G be two generators with an unknown discrete log relation.
 
@@ -120,3 +124,78 @@ Protocol:
    an element of low order other than the identity in the group of unknown order.
    But for Z/n, -1 is such an element. By quotienting out {1,-1}, -1 becomes the
    identity (since min(n - 1, (n + 1) mod n) == 1).
+
+
+#####################
+# "Simple" protocol #
+#####################
+
+- Let G be a group of unknown order with no known low-order elements.
+
+- Let g,h in G be two generators with an unknown discrete log relation.
+
+- Let pk = (n, e) be an RSA public key with modulus n = p*q (unrelated to the group G)
+  and public exponent e.
+
+- let s be a random integer less than n.
+
+* public data:
+    (1) C1 = g^n h^s in G
+    (2) C2 = RSAEncrypt(pk, s), i.e., an RSA encryption of s to pk (say, using RSA-OAEP)
+
+* private data: n, s
+
+Informally, if we assume that C2 is an encryption of the opening s to C1 under the public key
+pk, a convincing proof of knowledge of C1's opening implies that the prover can decrypt C2.
+(Of course, this does not hold if C2 is dishonestly generated or if the prover learns s other
+than by decrypting C2.)
+
+Protocol:
+* Prover does the following:
+    (1) choose two random 2048-bit integers r_n, r_s
+
+    (2) compute A = g^(r_n) h^(r_s)
+
+    (3) send A to the verifier
+
+* Verifier does the following:
+    (1) choose a random challenge chal in {0,1}^128
+
+    (2) choose a random prime ell in {0,1}^128
+
+* Prover does the following:
+    (1) decrypt C2 using secret key to reveal s
+
+    (2) compute the integer vector
+        z = chal * (n, s) + (r_n, r_s)
+
+    (3) compute  (here  x // y  is the integer quotient of x divided by y)
+        Aq = g^(z_n  // ell)  h^(z_s  // ell)
+
+    (4) send Aq, z' = (z mod ell) = (z_n mod ell, z_s mod ell)
+
+* Verifier accepts iff
+    Aq^ell g^(z'_n) h^(z'_s) = A C1^chal
+
+
+To convert this to a "signature" on a message M, apply the Fiat-Shamir heuristic as above:
+
+* Signer does the following:
+    (1) compute A as described above
+
+    (2) Compute PRNG_Key = Hash(G, g, h, C1, C2, A, M)
+
+    (3) Use a PRNG seeded with PRNG_Key to generate chal and ell as described above.
+
+    (4) Compute Aq, z' as described above.
+
+    (5) output signature (chal, ell, Aq, z')
+
+* Verifier does the following
+    (1) Compute
+        A = Aq^ell g^(z'_n) h^(z'_s) / C1^chal
+        PRNG_Key = Hash(G, g, h, C1, C2, A, M)
+
+    (2) Use a PRNG seeded with PRNG_Key to generate chal' and ell' as described above.
+
+    (3) Accept iff chal' == chal and ell' == ell.

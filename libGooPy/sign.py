@@ -19,6 +19,20 @@ class GooSigSigner(object):
     def __init__(self, p, q, gops=None):
         self.p = p
         self.q = q
+        self.n = self.p * self.q
+
+        # encryption and decryption with Signer's key
+        self.lam = (p - 1) * (q - 1) // lutil.gcd(p - 1, q - 1)
+        for e in lprimes.primes_skip(1):
+            if e > 1000:
+                raise RuntimeError("cannot find suitable secret key")
+            d = lutil.invert_modp(e, self.lam)
+            if d is not None:
+                self.e = e
+                self.d = d
+                break
+        assert (self.d * self.e) % self.lam == 1
+
         if gops is None:
             modbits = lutil.clog2(p) + lutil.clog2(q)
             gops = lgops.RSAGroupOps(Grsa2048, modbits)
@@ -27,11 +41,18 @@ class GooSigSigner(object):
         assert lprimes.is_prime(p)
         assert lprimes.is_prime(q)
 
+    def encrypt(self, m):
+        # NOTE this is not real RSA encryption! You should use RSA-OAEP or the like.
+        return pow(m, self.e, self.n)
+
+    def decrypt(self, c):
+        # NOTE this is not real RSA decryption! You should use RSA-OAEP or the like.
+        return pow(c, self.d, self.n)
+
     def sign(self, C1, s, msg):
         # NOTE one assumes that s will have been encrypted to our public key.
         #      This function expects that s has already been decrypted.
-        n = self.p * self.q
-        assert C1 == self.gops.reduce(self.gops.powgh(n, s)), "C1 does not appear to commit to our RSA modulus with opening s"
+        assert C1 == self.gops.reduce(self.gops.powgh(self.n, s)), "C1 does not appear to commit to our RSA modulus with opening s"
 
         ###
         ### Preliminaries: compute values P needs to run the ZKPOK
@@ -45,8 +66,8 @@ class GooSigSigner(object):
         if w is None or t is None:
             RuntimeError("did not find a prime quadratic residue less than 1000 mod N!")
 
-        a = (w**2 - t) // n
-        assert a * n == w**2 - t, "w^2 - t was not divisible by N!"
+        a = (w**2 - t) // self.n
+        assert a * self.n == w**2 - t, "w^2 - t was not divisible by N!"
 
         # commitment to w
         s1 = self.gops.rand_scalar()
@@ -80,7 +101,7 @@ class GooSigSigner(object):
         z_w2 = chal * w * w + r_w2
         z_s1 = chal * s1 + r_s1
         z_a = chal * a + r_a
-        z_an = chal * a * n + r_an
+        z_an = chal * a * self.n + r_an
         z_s1w = chal * s1 * w + r_s1w
         z_sa = chal * s * a + r_sa
 
@@ -98,3 +119,43 @@ class GooSigSigner(object):
         ###
         sigma = (chal, ell, Aq, Bq, Cq, Dq, z_prime)
         return (C2, t, sigma)
+
+    def sign_simple(self, C1, C2, msg):
+        ###
+        ### Preliminaries
+        ###
+        # decrypt C2 to get s
+        s = self.decrypt(C2)
+        assert C1 == self.gops.reduce(self.gops.powgh(self.n, s)), "C1 does not appear to commit to our RSA modulus with opening s"
+
+        ###
+        ### P's first message: commit to randomness
+        ###
+        # P's randomness
+        (r_n, r_s) = ( self.gops.rand_scalar() for _ in range(0, 2) )
+
+        # P's first message
+        A = self.gops.reduce(self.gops.powgh(r_n, r_s))
+
+        ###
+        ### V's message: random challenge and random prime
+        ###
+        (chal, ell) = lprng.fs_chal(self.gops.desc, C1, C2, A, msg)
+
+        ###
+        ### P's second message: compute quotient message
+        ###
+        # compute z' = c*(n, s) + (r_n, r_s)
+        z_n = chal * self.n + r_n
+        z_s = chal * s + r_s
+
+        # compute quotient commitments
+        Aq = self.gops.reduce(self.gops.powgh(z_n // ell, z_s // ell))
+
+        # compute z'
+        z_prime = tuple( z_foo % ell for z_foo in (z_n, z_s) )
+
+        ###
+        ### signature: (chal, ell, Aq, z_prime)
+        ###
+        return (chal, ell, Aq, z_prime)

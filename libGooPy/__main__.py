@@ -3,6 +3,7 @@
 # (C) 2018 Riad S. Wahby <rsw@cs.stanford.edu>
 
 from __future__ import print_function
+import itertools
 import sys
 import time
 
@@ -54,38 +55,61 @@ def main(run_submodules, nreps):
                , ("1024-bit BQF GoUO, 2048-bit Signer PK", gops_c1_2_p, gops_c1_v)
                , ("1024-bit BQF GoUO, 4096-bit Signer PK", gops_c1_4_p, gops_c1_v)
                ]
-    pv_times = [ ([], []) for _ in range(0, len(pv_expts)) ]
+    pv_times = [ ([], []) for _ in range(0, 2 * len(pv_expts)) ]
     pv_plsts = [tu.primes_1024, tu.primes_2048]
 
     def test_sign_verify():
-        "sign_and_verify,4x2,4x4,2x2,2x4,c2x2,c2x4,c1x2,c1x4"
+        "sign_and_verify,4x2,4x4,2x2,2x4,c2x2,c2x4,c1x2,c1x4,4x2_s,4x4_s,2x2_s,2x4_s,c2x2_s,c2x4_s,c1x2_s,c1x4_s"
 
         res = [None] * len(pv_times)
         for (idx, (msg, gops_p, gops_v)) in enumerate(pv_expts):
             # random Signer modulus
             (p, q) = lutil.rand.sample(pv_plsts[idx % 2], 2)
             prv = GooSigSigner(p, q, gops_p)
+            ver = GooSigVerifier(gops_v)
+
+            ### run the "complex" proof
             # commit to Signer modulus
             s = prv.gops.rand_scalar()
             C1 = prv.gops.reduce(prv.gops.powgh(p * q, s))
-            # run the proof
+
+            # generate the proof
             start_time = time.time()
             (C2, t, sigma) = prv.sign(C1, s, msg)
             stop_time = time.time()
             pv_times[idx][0].append(stop_time - start_time)
 
             # verify the proof
-            ver = GooSigVerifier(gops_v)
             start_time = time.time()
             res[idx] = ver.verify((C1, C2, t), msg, sigma)
             stop_time = time.time()
             pv_times[idx][1].append(stop_time - start_time)
 
+            ### run the "simple" proof
+            # commit to Signer modulus and encrypt s to PK
+            s_simple = lutil.rand.getrandbits(prv.n.bit_length() - 1)
+            C1_simple = prv.gops.reduce(prv.gops.powgh(p * q, s_simple))
+            C2_simple = prv.encrypt(s_simple)
+
+            # generate the proof
+            start_time = time.time()
+            sigma = prv.sign_simple(C1_simple, C2_simple, msg)
+            stop_time = time.time()
+            pv_times[idx + len(pv_expts)][0].append(stop_time - start_time)
+
+            # verify the proof
+            start_time = time.time()
+            res[idx + len(pv_expts)] = ver.verify_simple((C1_simple, C2_simple), msg, sigma)
+            stop_time = time.time()
+            pv_times[idx + len(pv_expts)][1].append(stop_time - start_time)
+
         return res
 
     tu.run_all_tests(nreps, "end-to-end", test_sign_verify)
-    for ((n, _, _), t) in zip(pv_expts, pv_times):
-        tu.show_timing_pair(n, t)
+    for (idx, (n, _, _)) in enumerate(itertools.chain(pv_expts, pv_expts)):
+        if idx >= len(pv_expts):
+            n = "Simple " + n
+        tu.show_timing_pair(n, pv_times[idx])
 
 if __name__ == "__main__":
     run_all = False
