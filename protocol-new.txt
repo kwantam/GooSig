@@ -1,52 +1,43 @@
-Let G be a group of known order q with a hard discrete-log (e.g. secp256r1).
-Let g, h in G be two fixed generators.
+Let G be an ECDSA group (e.g. secp256r1) of known order q.
+Let g in G be a fixed generator.
 Let H be a hash function that outputs elements in Z_q (e.g. SHA256)
 
-* SendTokens(pk):   send tokens to an RSA public key (n,e)
+* SendTokens(pk):   to send tokens to an RSA public key pk=(n,e) do:
   step 1:  generate a random integer s in {0,1,...,n-1}
   step 2:  output  (c1, c2)  where
-		c1 := g^H(n) * h^H(s)  in G
-		c2 := s^e mod n   in Z
+		c1 = g^H(s)  in G
+		c2 = s^e mod n   in Z
 
   note: as described, the magnitude of c2 leaks information about n.
 	Instead of simply reducing mod n, the algorithm must do the following:
-        	repeat until  c2 < 2^4100:
+        	repeat: 
 			- choose a random r in {0,1,...,2^4104//n} 
-			- compute  c2 := (s^e mod n) + r*n  in Z
+			- compute  c2 = (s^e mod n) + r*n  in Z
+		until  (c2 < 2^4104)
 		output c2 in Z
 	this process ensures that c2 is uniform in {0,1,...,2^4104-1}
-	independent of n, as long as n is at most 4096 bits.
+	and is independent of n, as long as n is at most 4096 bits.
 
-  another note:  the GitHub user who has the RSA secret key and grind
+  another note:  the GitHub user who has the RSA secret key sk can grind
 	through all posted pairs to find his own (c1, c2)
 	by taking an e'th root of c2 and checking that the resulting
-	value is consistent with c1. 
+	value is consistent with c1.  
+	This can be made efficient by making s start with
+	128 zero bits, so that user Bob can simply take an e'th root 
+	of c2 to determine if a specific (c1,c2) is his. 
 
 
 
-* Sign(sk, (c1,c2), m):  to withdraw the funds using the RSA secret key sk 
-	by signing a message m do:
-  step 1:  use sk to compute s = c2^{1/e} mod n 
-  step 2:  construct a signature-of-knowledge proving that the signer
-		knows (n, s) such that  c1 = g^H(n) * h^H(s).     
-	   The fact that it knows s proves that is has the RSA secret key sk.  
-
-  Concretely, to sign m do:
-    step 2a: choose two random numbers  r_n, r_s  in Z_q
-		and compute  A = g^(r_n) * h^(r_s)  in G
-    step 2b: use H(m, c1, c2, A) to derive a 128-bit challenge chal.
-    step 2c: set z = chal*(H(n), H(s)) + (r_n, r_s)   in  Z_q^2  
-    step 3c: output the signature  (chal, z[0], z[1]).   
-		The signature is 2*256+128 bits.
-          
+* Sign(sk, (c1,c2), m):  to withdraw the funds associated with (c1,c2) 
+	by signing a message m using the RSA secret key sk do:
+  step 1:  use sk to compute s = c2^{1/e} mod n  where s in {0,1,...,n-1}
+  step 2:  sign the message (m, c1, c2) using H(s) as the secret Schnorr key
+		and c1 = g^H(s) as the public key.  
+		Output the resulting Schnorr siganture sig.
 
 
-* Verify((c1,c2), m, sig) where sig = (chal, z[0], z[1])
-  step 1: compute    A' = g^(z[0]) * h^(z[1]) / c1^chal   
-  step 2: use H(m, c1, c2, A') to derive a 128-bit challenge chal'.
-  step 3: accept if   chal' == chal  
-
-
-
+* Verify((c1,c2), m, sig):
+	verify that sig is a valid Schnorr signature using 
+	public key c1 on the message (m, c1, c2).
 
 
