@@ -23,9 +23,11 @@
 	this process ensures that c2 is uniform in {0,1,...,2^4104-1}
 	and is independent of n, as long as n is at most 4096 bits.
 
-  another note:  while c1 is on the blockchain,  c0 can be off chain.
-        There is a public association between c0 and pk, so that the
-	owner of pk can easily find c0.
+  another note: while c1 is on the blockchain, c0 can be off chain.
+        There is a public association between c0 and pk (e.g., via a hash
+        table), so that the owner of pk can easily find c0.  One can
+        include H(c1) in the plaintext encrypted in c0 to help the owner
+        of pk quickly find c1.
 
 
 * Sign(sk, (c0,c1), m):  to withdraw the funds associated with (c0,c1) 
