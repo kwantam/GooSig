@@ -54,12 +54,12 @@ class GooSigVerifier(object):
         ###
         ### Step 2: recompute implicitly claimed V message, viz., chal and ell
         ###
-        (chal_out, ell_out) = lprng.fs_chal(True, self.gops.desc, C1, C2, t, A, B, C, D, msg)
+        (chal_out, ell_r_out) = lprng.fs_chal(True, self.gops.desc, C1, C2, t, A, B, C, D, msg)
 
         # final checks
-        # chal has to match AND 0 <= (ell_out - ell) <= 4 * chalbits AND ell is prime
-        elldiff = ell - ell_out
-        if chal != chal_out or elldiff < 0 or elldiff > 4 * Defs.chalbits or not lprimes.is_prime(ell):
+        # chal has to match AND 0 <= (ell_r_out - ell) <= elldiff_max AND ell is prime
+        elldiff = ell - ell_r_out
+        if chal != chal_out or elldiff < 0 or elldiff > Defs.elldiff_max or not lprimes.is_prime(ell):
             return False
 
         return True

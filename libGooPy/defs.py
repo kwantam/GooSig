@@ -17,11 +17,8 @@ class Defs(object):
 
     hashfn = hashlib.sha256
     chalbits = 128
-    pdelta = 18
-    ft_prime_opts = None    # gets set below
+    elldiff_max = 512       # 4 * chalbits (or even 8 * chalbits) is a reasonable value here
 
     # this is the list of primes from which P can choose to prove ability to take sqrt mod her RSA modulus
     # each one is a QR mod N with probability 1/2, so this list suffices except with vanishing probability
     primes = list( takewhile(lambda x: x < 1000, lprimes.primes()) )
-
-Defs.ft_prime_opts = lprimes.gen_ft_prime_opts(Defs.chalbits, Defs.pdelta)

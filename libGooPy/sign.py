@@ -52,11 +52,10 @@ class GooSigSigner(object):
         ###
         ### P's first message: commit to randomness
         ###
-        # P's randomness
-        (r_w, r_w2, r_s1, r_a, r_an, r_s1w, r_sa) = ( self.gops.rand_scalar() for _ in range(0, 7) )
+        # P's randomness (except for r_s1; see "V's message", below)
+        (r_w, r_w2, r_a, r_an, r_s1w, r_sa) = ( self.gops.rand_scalar() for _ in range(0, 6) )
 
-        # P's first message
-        A = self.gops.reduce(self.gops.powgh(r_w, r_s1))
+        # P's first message (except for A; see "V's message", below)
         B = self.gops.reduce(self.gops.mul(self.gops.pow(C2Inv, C2, r_w), self.gops.powgh(r_w2, r_s1w)))
         C = self.gops.reduce(self.gops.mul(self.gops.pow(C1Inv, C1, r_a), self.gops.powgh(r_an, r_sa)))
         D = r_w2 - r_an
@@ -64,7 +63,14 @@ class GooSigSigner(object):
         ###
         ### V's message: random challenge and random prime
         ###
-        (chal, ell) = lprng.fs_chal(False, self.gops.desc, C1, C2, t, A, B, C, D, msg)
+        ell = None
+        while ell is None or ell.bit_length() != 128:
+            # randomize the signature until Fiat-Shamir returns an admissable ell
+            # NOTE it's not necessary to re-start the whole signature!
+            #      Just pick a new r_s1, which only requires re-computing A.
+            r_s1 = self.gops.rand_scalar()
+            A = self.gops.reduce(self.gops.powgh(r_w, r_s1))
+            (chal, ell) = lprng.fs_chal(False, self.gops.desc, C1, C2, t, A, B, C, D, msg)
 
         ###
         ### P's second message: compute quotient message

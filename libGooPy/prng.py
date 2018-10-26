@@ -59,11 +59,10 @@ def fs_chal(ver_only, *args):
     chal = fs_hash_prng.getrandbits(Defs.chalbits)
 
     if ver_only:
-        # for verifier, just return int on which P called next_prime
         ell = fs_hash_prng.getrandbits(Defs.chalbits)
-    else:
-        # for prover, call next_prime on a random integer
-        ell = lprimes.next_prime(fs_hash_prng.getrandbits(Defs.chalbits))
+    if not ver_only:
+        # for prover, call next_prime on ell_r to get ell
+        ell = lprimes.next_prime(fs_hash_prng.getrandbits(Defs.chalbits), Defs.elldiff_max)
 
     return (chal, ell)
 

@@ -160,12 +160,23 @@ def is_prime_div(n):
 
 # Baillie-PSW primality test (default #reps is overkill)
 def is_prime(n, nreps=2):
+    if n in PrimeDefs.test_primes:
+        return True
     return is_prime_div(n) and is_prime_rm(n, 16 * nreps) and is_prime_lucas(n, nreps)
 
-def next_prime(p):
-    p |= 1
+def next_prime(p, maxinc=None):
+    if p & 1 == 0:
+        inc = 1
+        p |= 1
+    else:
+        inc = 0
     while not is_prime(p):
+        if maxinc is not None and inc > maxinc:
+            break
         p += 2
+        inc += 2
+    if maxinc is not None and inc > maxinc:
+        return None
     return p
 
 def primeprod_and_carmichael(nbits):
