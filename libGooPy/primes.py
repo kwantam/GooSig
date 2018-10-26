@@ -162,12 +162,10 @@ def is_prime_div(n):
 def is_prime(n, nreps=2):
     return is_prime_div(n) and is_prime_rm(n, 16 * nreps) and is_prime_lucas(n, nreps)
 
-def primeinc(nbits, rng=None):
-    p = 1
-    while p.bit_length() != nbits or not is_prime(p):
-        p = rng.getrandbits(nbits) | 1
-        while p.bit_length() == nbits and not is_prime(p):
-            p += 2
+def next_prime(p):
+    p |= 1
+    while not is_prime(p):
+        p += 2
     return p
 
 def primeprod_and_carmichael(nbits):

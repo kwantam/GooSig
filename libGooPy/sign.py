@@ -22,9 +22,8 @@ class GooSigSigner(object):
             gops = lgops.RSAGroupOps(Grsa2048, modbits)
         self.gops = gops
 
-    def sign(self, C1, s, msg):
-        # NOTE one assumes that s will have been encrypted to our public key.
-        #      This function expects that s has already been decrypted.
+    def sign(self, C0, C1, msg):
+        s = self.rsakey.decrypt(C0)
         assert C1 == self.gops.reduce(self.gops.powgh(self.rsakey.n, s)), "C1 does not appear to commit to our RSA modulus with opening s"
 
         ###
@@ -64,7 +63,7 @@ class GooSigSigner(object):
         ###
         ### V's message: random challenge and random prime
         ###
-        (chal, ell) = lprng.fs_chal(self.gops.desc, C1, C2, t, A, B, C, D, msg)
+        (chal, ell) = lprng.fs_chal(False, self.gops.desc, C1, C2, t, A, B, C, D, msg)
 
         ###
         ### P's second message: compute quotient message

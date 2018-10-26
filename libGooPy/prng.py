@@ -46,7 +46,7 @@ class HashPRNG(object):
 
         return start + self._randrange(stop - start)
 
-def fs_chal(*args):
+def fs_chal(ver_only, *args):
     fs_hash = Defs.hashfn(b"libGooPy:")
 
     # hash the inputs
@@ -57,6 +57,9 @@ def fs_chal(*args):
     prng_key = fs_hash.hexdigest()
     fs_hash_prng = HashPRNG(prng_key)
     chal = fs_hash_prng.getrandbits(Defs.chalbits)
-    ell = lprimes.fouque_tibouchi_primegen(Defs.ft_prime_opts, fs_hash_prng)
+    if ver_only:
+        ell = fs_hash_prng.getrandbits(Defs.chalbits)
+    else:
+        ell = lprimes.next_prime(fs_hash_prng.getrandbits(Defs.chalbits))
 
     return (chal, ell)

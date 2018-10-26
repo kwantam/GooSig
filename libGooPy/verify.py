@@ -7,6 +7,7 @@ import sys
 import libGooPy.group_ops as lgops
 from libGooPy.consts import Grsa2048
 from libGooPy.defs import Defs
+import libGooPy.primes as lprimes
 import libGooPy.prng as lprng
 
 # python 2/3 hack
@@ -53,10 +54,12 @@ class GooSigVerifier(object):
         ###
         ### Step 2: recompute implicitly claimed V message, viz., chal and ell
         ###
-        (chal_out, ell_out) = lprng.fs_chal(self.gops.desc, C1, C2, t, A, B, C, D, msg)
+        (chal_out, ell_out) = lprng.fs_chal(True, self.gops.desc, C1, C2, t, A, B, C, D, msg)
 
-        # final check
-        if chal != chal_out or ell != ell_out:
+        # final checks
+        # chal has to match AND 0 <= (ell_out - ell) <= 4 * chalbits AND ell is prime
+        elldiff = ell - ell_out
+        if chal != chal_out or elldiff < 0 or elldiff > 4 * Defs.chalbits or not lprimes.is_prime(ell):
             return False
 
         return True

@@ -19,6 +19,10 @@ def show_test(name, just=32):
     sys.stdout.write(("\033[38;5;33m%s\033[0m: " % name).ljust(just))
     sys.stdout.flush()
 
+def show_warning(warn):
+    sys.stdout.write('\033[91mWARNING\033[0m: %s\n' % warn)
+    sys.stdout.flush()
+
 def show_progress(failed):
     if failed:
         sys.stdout.write('\033[91m.\033[0m')
@@ -32,10 +36,11 @@ def show_timing(tname, tvals, just=32):
     sys.stdout.write((u"\033[92m \u25f7 %s\033[0m: " % tname).ljust(just))
     sys.stdout.write(u"%2.2f ms, \u03c3=%2.2f ms, max=%2.2f ms, min=%2.2f ms\n" % (mean * 1000, samp_dev * 1000, max(tvals) * 1000, min(tvals) * 1000))
 
-def show_timing_pair(tname, pvvals):
-    (pvals, vvals) = pvvals
+def show_timing_triple(tname, gpvvals):
+    (gvals, pvals, vvals) = gpvvals
     show_test("Timings for %s" % tname, 0)
     sys.stdout.write('\n')
+    show_timing("Token generation", gvals, 36)
     show_timing("Signing", pvals, 36)
     show_timing("Verifying", vvals, 36)
     sys.stdout.write('\n')

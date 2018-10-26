@@ -12,6 +12,7 @@ try:
     import libGooPy.rsa as lrsa
     from libGooPy.sign import GooSigSigner
     import libGooPy.test_util as tu
+    from libGooPy.tokengen import GooSigTokGen
     import libGooPy.util as lutil
     from libGooPy.verify import GooSigVerifier
 except Exception as e:  # pylint: disable=broad-except
@@ -55,7 +56,7 @@ def main(run_submodules, nreps):
                , ("1024-bit BQF GoUO, 2048-bit Signer PK", gops_c1_2_p, gops_c1_v)
                , ("1024-bit BQF GoUO, 4096-bit Signer PK", gops_c1_4_p, gops_c1_v)
                ]
-    pv_times = [ ([], []) for _ in range(0, len(pv_expts)) ]
+    pv_times = [ ([], [], []) for _ in range(0, len(pv_expts)) ]
     pv_plsts = [tu.primes_1024, tu.primes_2048]
 
     def test_sign_verify():
@@ -66,31 +67,35 @@ def main(run_submodules, nreps):
             # random Signer modulus
             (p, q) = lutil.rand.sample(pv_plsts[idx % 2], 2)
             rsakey = lrsa.RSAKey(p, q)
+            gen = GooSigTokGen(gops_p)
             prv = GooSigSigner(rsakey, gops_p)
             ver = GooSigVerifier(gops_v)
 
-            ### run the "complex" proof
-            # commit to Signer modulus
-            s = prv.gops.rand_scalar()
-            C1 = prv.gops.reduce(prv.gops.powgh(p * q, s))
-
-            # generate the proof
+            # generate the challenge token
             start_time = time.time()
-            (C2, t, sigma) = prv.sign(C1, s, msg)
+            (C0, C1) = gen.send_tokens(rsakey)
             stop_time = time.time()
             pv_times[idx][0].append(stop_time - start_time)
 
-            # verify the proof
+            # generate the signature
+            start_time = time.time()
+            (C2, t, sigma) = prv.sign(C0, C1, msg)
+            stop_time = time.time()
+            pv_times[idx][1].append(stop_time - start_time)
+
+            # verify the signature
             start_time = time.time()
             res[idx] = ver.verify((C1, C2, t), msg, sigma)
             stop_time = time.time()
-            pv_times[idx][1].append(stop_time - start_time)
+            pv_times[idx][2].append(stop_time - start_time)
 
         return res
 
     tu.run_all_tests(nreps, "end-to-end", test_sign_verify)
+    if sys.flags.optimize == 0:
+        tu.show_warning("you should call Python with the -O flag to get reasonable timing numbers.")
     for (idx, (n, _, _)) in enumerate(pv_expts):
-        tu.show_timing_pair(n, pv_times[idx])
+        tu.show_timing_triple(n, pv_times[idx])
 
 if __name__ == "__main__":
     run_all = False
