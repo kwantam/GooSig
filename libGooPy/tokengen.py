@@ -5,6 +5,7 @@
 from libGooPy.consts import Grsa2048
 from libGooPy.defs import Defs
 import libGooPy.group_ops as lgops
+import libGooPy.prng as lprng
 import libGooPy.util as lu
 
 class GooSigTokGen(object):
@@ -14,14 +15,14 @@ class GooSigTokGen(object):
     def send_tokens(self, rsapubkey):
         # NOTE: in the real protocol, select a 256-bit s' and expand to 2048-bit s,
         #       e.g., with AESEnc(s', 0), ..., AESEnc(s', 3)
-        s = lu.rand.randrange(rsapubkey.n)          # NOTE randrange returns in [0, rsapubkey.n)
+        s_prime = lu.rand.getrandbits(256)
+        s = lprng.expand_sprime(s_prime)
 
         # the challenge: a commitment to the RSA modulus
         C1 = self.gops.reduce(self.gops.powgh(rsapubkey.n, s))
 
-        # s, encrypted to the pubkey
-        # see NOTE above about s vs s'
-        C0_pre = rsapubkey.encrypt(s)
+        # s_prime, encrypted to the pubkey
+        C0_pre = rsapubkey.encrypt(s_prime)
 
         # make a ciphertext C0 indistinguishable from a random (max_rsa_keysize + 8)-bit integer
         ct_lim = 1 << (Defs.max_rsa_keysize + 8)

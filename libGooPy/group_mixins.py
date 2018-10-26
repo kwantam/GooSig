@@ -252,4 +252,4 @@ class _RandMixin(object):
             self.prng = prng
 
     def rand_scalar(self):
-        return self.prng.getrandbits(self.nbits_rand)
+        return self.prng.getrandbits(min(Defs.rand_exponent_size, self.nbits_rand))

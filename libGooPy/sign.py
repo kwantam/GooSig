@@ -23,7 +23,8 @@ class GooSigSigner(object):
         self.gops = gops
 
     def sign(self, C0, C1, msg):
-        s = self.rsakey.decrypt(C0)
+        s_prime = self.rsakey.decrypt(C0)
+        s = lprng.expand_sprime(s_prime)
         assert C1 == self.gops.reduce(self.gops.powgh(self.rsakey.n, s)), "C1 does not appear to commit to our RSA modulus with opening s"
 
         ###

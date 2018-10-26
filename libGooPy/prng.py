@@ -6,12 +6,12 @@ from libGooPy.defs import Defs
 import libGooPy.primes as lprimes
 import libGooPy.util as lutil
 
-# NOTE AES-CTR is almost certainly much faster, but this sticks to the Python stdlib
-class HashPRNG(object):
-    def __init__(self, prng_key):
-        self.prng = Defs.hashfn(b"libGooPy_prng,%s" % str(prng_key).encode("utf-8"))
+# NOTE AES-CTR is almost certainly faster for most machines, but this approach sticks to the Python stdlib
+class _HashPRNG(object):
+    def __init__(self, prng):
+        self.prng = prng
         self.rnum = 0
-        self.r = 0
+        self.r_save = 0
 
     def _next_rand(self):
         self.prng.update(b"%016x" % self.rnum)
@@ -19,14 +19,14 @@ class HashPRNG(object):
         return int(self.prng.hexdigest(), 16)
 
     def getrandbits(self, nbits):
-        r = self.r
+        r = self.r_save
         b = r.bit_length()
         hashbits = self.prng.digest_size * 8
         while b < nbits:
             r <<= hashbits
             r += self._next_rand()
             b += hashbits
-        self.r = r & ((1 << (b - nbits)) - 1)
+        self.r_save = r & ((1 << (b - nbits)) - 1)
         r >>= (b - nbits)
         return r
 
@@ -46,20 +46,26 @@ class HashPRNG(object):
 
         return start + self._randrange(stop - start)
 
+    @classmethod
+    def new(cls, *seed):
+        new_prng = Defs.hashfn(b"libGooPy:")
+        for s in seed:
+            new_prng.update(str(s).encode("utf-8"))
+        return cls(new_prng)
+
 def fs_chal(ver_only, *args):
-    fs_hash = Defs.hashfn(b"libGooPy:")
+    fs_hash_prng = _HashPRNG.new(*args)
 
-    # hash the inputs
-    for arg in args:
-        fs_hash.update(str(arg).encode("utf-8"))
-
-    # build PRNG instance and compute chal and ell
-    prng_key = fs_hash.hexdigest()
-    fs_hash_prng = HashPRNG(prng_key)
     chal = fs_hash_prng.getrandbits(Defs.chalbits)
+
     if ver_only:
+        # for verifier, just return int on which P called next_prime
         ell = fs_hash_prng.getrandbits(Defs.chalbits)
     else:
+        # for prover, call next_prime on a random integer
         ell = lprimes.next_prime(fs_hash_prng.getrandbits(Defs.chalbits))
 
     return (chal, ell)
+
+def expand_sprime(s_prime):
+    return _HashPRNG.new(s_prime).getrandbits(Defs.rand_exponent_size)

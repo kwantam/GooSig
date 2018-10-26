@@ -9,6 +9,7 @@ import libGooPy.primes as lprimes
 
 class Defs(object):
     max_rsa_keysize = 4096
+    rand_exponent_size = 2048
 
     winsize = 6
     max_rsa_comb_size = 512
