@@ -1,6 +1,6 @@
 #!/usr/bin/python
 #
-# (C) 2018 Riad S. Wahby <rsw@cs.stanford.edu>
+# (C) 2018 Dan Boneh, Riad S. Wahby <rsw@cs.stanford.edu>
 
 from itertools import takewhile
 import hashlib
@@ -8,6 +8,8 @@ import hashlib
 import libGooPy.primes as lprimes
 
 class Defs(object):
+    max_rsa_keysize = 4096
+
     winsize = 6
     max_rsa_comb_size = 512
     max_bqf_comb_size = 64

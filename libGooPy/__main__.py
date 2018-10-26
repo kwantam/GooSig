@@ -1,6 +1,6 @@
 #!/usr/bin/python
 #
-# (C) 2018 Riad S. Wahby <rsw@cs.stanford.edu>
+# (C) 2018 Dan Boneh, Riad S. Wahby <rsw@cs.stanford.edu>
 
 from __future__ import print_function
 import sys
@@ -9,6 +9,7 @@ import time
 try:
     import libGooPy.consts as lc
     import libGooPy.group_ops as lg
+    import libGooPy.rsa as lrsa
     from libGooPy.sign import GooSigSigner
     import libGooPy.test_util as tu
     import libGooPy.util as lutil
@@ -64,7 +65,8 @@ def main(run_submodules, nreps):
         for (idx, (msg, gops_p, gops_v)) in enumerate(pv_expts):
             # random Signer modulus
             (p, q) = lutil.rand.sample(pv_plsts[idx % 2], 2)
-            prv = GooSigSigner(p, q, gops_p)
+            rsakey = lrsa.RSAKey(p, q)
+            prv = GooSigSigner(rsakey, gops_p)
             ver = GooSigVerifier(gops_v)
 
             ### run the "complex" proof

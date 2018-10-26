@@ -1,6 +1,6 @@
 #!/usr/bin/python
 #
-# (C) 2018 Riad S. Wahby <rsw@cs.stanford.edu>
+# (C) 2018 Dan Boneh, Riad S. Wahby <rsw@cs.stanford.edu>
 
 import itertools
 import sys

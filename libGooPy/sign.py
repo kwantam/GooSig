@@ -1,13 +1,12 @@
 #!/usr/bin/python
 #
-# (C) 2018 Riad S. Wahby <rsw@cs.stanford.edu>
+# (C) 2018 Dan Boneh, Riad S. Wahby <rsw@cs.stanford.edu>
 
 import sys
 
 import libGooPy.group_ops as lgops
 from libGooPy.consts import Grsa2048
 from libGooPy.defs import Defs
-import libGooPy.primes as lprimes
 import libGooPy.prng as lprng
 import libGooPy.util as lutil
 
@@ -16,43 +15,17 @@ if sys.version_info[0] == 2:
     range = xrange      # pylint: disable=redefined-builtin,undefined-variable
 
 class GooSigSigner(object):
-    def __init__(self, p, q, gops=None):
-        self.p = p
-        self.q = q
-        self.n = self.p * self.q
-
-        # encryption and decryption with Signer's key
-        self.lam = (p - 1) * (q - 1) // lutil.gcd(p - 1, q - 1)
-        for e in lprimes.primes_skip(1):
-            if e > 1000:
-                raise RuntimeError("cannot find suitable secret key")
-            d = lutil.invert_modp(e, self.lam)
-            if d is not None:
-                self.e = e
-                self.d = d
-                break
-        assert (self.d * self.e) % self.lam == 1
-
+    def __init__(self, rsakey, gops=None):
+        self.rsakey = rsakey
         if gops is None:
-            modbits = lutil.clog2(p) + lutil.clog2(q)
+            modbits = lutil.clog2(self.rsakey.n)
             gops = lgops.RSAGroupOps(Grsa2048, modbits)
         self.gops = gops
-
-        assert lprimes.is_prime(p)
-        assert lprimes.is_prime(q)
-
-    def encrypt(self, m):
-        # NOTE this is not real RSA encryption! You should use RSA-OAEP or the like.
-        return pow(m, self.e, self.n)
-
-    def decrypt(self, c):
-        # NOTE this is not real RSA decryption! You should use RSA-OAEP or the like.
-        return pow(c, self.d, self.n)
 
     def sign(self, C1, s, msg):
         # NOTE one assumes that s will have been encrypted to our public key.
         #      This function expects that s has already been decrypted.
-        assert C1 == self.gops.reduce(self.gops.powgh(self.n, s)), "C1 does not appear to commit to our RSA modulus with opening s"
+        assert C1 == self.gops.reduce(self.gops.powgh(self.rsakey.n, s)), "C1 does not appear to commit to our RSA modulus with opening s"
 
         ###
         ### Preliminaries: compute values P needs to run the ZKPOK
@@ -60,14 +33,14 @@ class GooSigSigner(object):
         # find t
         t = None
         for t in Defs.primes:
-            w = lutil.sqrt_modn(t, self.p, self.q)
+            w = lutil.sqrt_modn(t, self.rsakey.p, self.rsakey.q)
             if w is not None:
                 break
         if w is None or t is None:
             RuntimeError("did not find a prime quadratic residue less than 1000 mod N!")
 
-        a = (w**2 - t) // self.n
-        assert a * self.n == w**2 - t, "w^2 - t was not divisible by N!"
+        a = (w**2 - t) // self.rsakey.n
+        assert a * self.rsakey.n == w**2 - t, "w^2 - t was not divisible by N!"
 
         # commitment to w
         s1 = self.gops.rand_scalar()
@@ -101,7 +74,7 @@ class GooSigSigner(object):
         z_w2 = chal * w * w + r_w2
         z_s1 = chal * s1 + r_s1
         z_a = chal * a + r_a
-        z_an = chal * a * self.n + r_an
+        z_an = chal * a * self.rsakey.n + r_an
         z_s1w = chal * s1 * w + r_s1w
         z_sa = chal * s * a + r_sa
 
