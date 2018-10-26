@@ -60,34 +60,3 @@ class GooSigVerifier(object):
             return False
 
         return True
-
-    def verify_simple(self, pubkey, msg, sigma):
-        (C1, C2) = pubkey
-        (chal, ell, Aq, z_prime) = sigma
-        (zp_n, zp_s) = z_prime
-
-        # make sure that the public key and signature include valid group elements
-        if not all( self.gops.is_reduced(b) for b in (C1, Aq) ):
-            # all group elements must be the "canonical" element of the quotient group (Z/n)/{1,-1}
-            return False
-
-        # compute inverses of C1 and Aq
-        # NOTE: As above, can get inverse of Aq for free from inverse of C1 and then
-        #       use signed-digit exponentiation.
-        (C1Inv, AqInv) = self.gops.inv2(C1, Aq)
-
-        ###
-        ### Step 1: reconstruct A from signature
-        ###
-        A = self.gops.reduce(self.gops.mul(self.gops.pow2(Aq, AqInv, ell, C1Inv, C1, chal), self.gops.powgh(zp_n, zp_s)))
-
-        ###
-        ### Step 2: recompute implicitly claimed V message, viz., chal and ell
-        ###
-        (chal_out, ell_out) = lprng.fs_chal(self.gops.desc, C1, C2, A, msg)
-
-        # final check
-        if chal != chal_out or ell != ell_out:
-            return False
-
-        return True
