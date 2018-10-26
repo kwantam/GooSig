@@ -1,201 +1,128 @@
-######################
-# "Complex" protocol #
-######################
+####################
+#    Signature    #
+####################
 
 - Let G be a group of unknown order with no known low-order elements.
-
 - Let g,h in G be two generators with an unknown discrete log relation.
 
-- Let n = p*q be an RSA modulus (unrelated to the group G)
 
-- let s, s1 be random 2048-bit integers.
+* SendTokens(pk):   to send tokens to an RSA public key pk=(n,e) do:
+  step 1:  generate a random 256-bit s' and set  s = H(s').
+       	   	    Here H is a hash function that outputs a 2048-bit integer.
+  step 2:  output  (c0, c1)  where
+		   c0 = RSAencrypt(pk, s')  in Z_n
+		   c1 = g^n * h^s  in G
 
-* public data:
-    (1) C1 = g^n h^s in G,
-    (2) a prime 2 ≤ t ≤ 1000  s.t. t is a quadratic residue mod n,
-    (3) C2 = g^w h^(s1) in G  where w^2 = t mod n (i.e. a commitment to sqrt(t) mod n).
+  note: as described, the magnitude of c2 leaks information about n.
+	Instead of simply reducing mod n, the algorithm must do the following:
+        	repeat: 
+			- choose a random r in {0,1,...,2^4104//n} 
+			- compute  c2 = (s^e mod n) + r*n  in Z
+		until  (c2 < 2^4104)
+		output c2 in Z
+	this process ensures that c2 is uniform in {0,1,...,2^4104-1}
+	and is independent of n, as long as n is at most 4096 bits.
 
-* private data:   n, w, s, s1
+  another note:  while c1 is on the blockchain,  c0 can be off chain.
+        There is a public association between c0 and pk, so that the
+	owner of pk can easily find c0.
 
-### ZKPK ###
 
-Goal: ZKPK for (n, w, s, s1) s.t.
-    C1 = g^n h^s in G
-    C2 = g^w h^(s1) in G
-    w^2 = t mod n.
+* Sign(sk, (c0,c1), m):  to withdraw the funds associated with (c0,c1) 
+	by signing a message m using the RSA secret key sk do:
+  step 1:  Use sk to decrypt c0 and obtain s'.  Compute s = H(s').
+           Then  c1 = g^n * h^s in G.
+  step 2:  find a prime 2 <= t <= 1000  s.t. t is a quadratic residue mod n.
+  step 3:  find integers (w,a) such that   w^2 = t + a*n   
+       	   		 (i.e. w is sqrt(t) mod n)
+  step 4:  choose a random 2048-bit integer s1 and compute
+       	   	  c2 = g^w * h^(s1) in G  
 
-The ZKPK works by proving knowledge of seven integers
-    w, w2, s1, a, an, s1w, sa
-satisfying:
-    C2 = g^w h^(s1)
-    g^(w2) h^(s1w) = C2^w
-    g^(an) h^(sa) = C1^a
-    w2 = t + an
+  With (c2, t) public, the computed signature is a 
+  signature of knowledge of integers (n, w, a, s, s1) where 
+    (1)  c1 = g^n h^s in G,
+    (2)  c2 = g^w h^(s1) in G,
+    (3)  w^2 = t + a*n.
 
-Protocol:
-* [PS1] Prover does the following:
-    (1) compute integer  a   s.t.  w^2 = t + a*n   (i.e., a = (w^2-t)/n)
+  The ZKPK works by proving knowledge of seven integers
+      w, w2, s1, a, an, s1w, sa
+  satisfying:
+     c2 = g^w h^(s1)
+     g^(w2) h^(s1w) = c2^w
+     g^(an) h^(sa) = c1^a
+     w2 = t + an
 
-    (2) choose seven random 2048-bit integers   r_w, r_w2, r_s1, r_a, r_an, r_s1w, r_sa
+  Concretely:
+    (i) choose seven random 2048-bit integers   
+    	       r_w, r_w2, r_s1, r_a, r_an, r_s1w, r_sa
 
-    (3) compute
+    (ii) compute
             A = g^(r_w)  h^(r_s1)
             B = g^(r_w2) h^(r_s1w) / C2^(r_w)
             C = g^(r_an) h^(r_sa)  / C1^(r_a)
             D = r_w2 - r_an   in the integers
 
-    (4) send A. B, C, D to the verifier
+    (iii) computes
+            PRNG_Key = Hash(m, G, g, h, c1, c2, t, A, B, C, D)
 
-* [VS1] Verifier does the following:
-    (1) choose a random challenge chal in {0,1}^128
+    (iv) Use a PRNG seeded with PRNG_Key to generate a random 128-bit chal 
+    	 and a random 128-bit prime ell.
+	 note:  need to check if a Miller-Rabin pseudoprime is sufficient.
 
-    (2) choose a random prime ell in {0,1}^128
+    (v) compute the integer vector
+            z = chal*(w, w2, s1, a, an, s1w, sa) + 
+	      		 (r_w, r_w2, r_s1, r_a, r_an, r_s1w, r_sa)  in Z^7
+        let z = (z_w, z_w2, z_s1, z_a, z_an, z_s1w, z_sa)
+   	and z' = (z mod ell) = (z_w mod ell, z_w2 mod ell, ..., z_sa mod ell) \in Z^7
 
-* [PS2] Prover does the following:
-    (1) compute the integer vector
-            z = chal*(w, w2, s1, a, an, s1w, sa) + (r_w, r_w2, r_s1, r_a, r_an, r_s1w, r_sa)  in Z^7
-                    let (z_w, z_w2, z_s1, z_a, z_an, z_s1w, z_sa) = z
-
-    (2) compute  (here  x // y  is the integer quotient of x divided by y)
-            Aq = g^(z_w  // ell)  h^(z_s1  // ell)
-            Bq = g^(z_w2 // ell)  h^(z_s1w // ell)  /  C2^(z_w // ell)
-            Cq = g^(z_an // ell)  h^(z_sa  // ell)  /  C1^(z_a // ell)
+    (vi) compute  (here  x // y  is the integer quotient of x divided by y)
+            Aq = g^(z_w  // ell)  h^(z_s1  // ell) in G
+            Bq = g^(z_w2 // ell)  h^(z_s1w // ell)  /  C2^(z_w // ell) in G
+            Cq = g^(z_an // ell)  h^(z_sa  // ell)  /  C1^(z_a // ell) in G
             Dq = (z_w2 - z_an) // \ell   in the integers
 
-    (3) send
-            z' = (z mod ell) = (z_w mod ell, z_w2 mod ell, ..., z_sa mod ell) \in Z^7/ell
-                    let (z'_w, z'_w2, ..., z'_sa) = z'
-            (Aq, Bq, Cq, Dq) \in G^3 \times Z
-
-* [VS2] Verifier accepts iff
-            Aq^ell  g^(z'_w)   h^(z'_s1)              = C2^(chal) * A
-            Bq^ell  g^(z'_w2)  h^(z'_s1w) / C2^(z'_w) = B
-            Cq^ell  g^(z'_an)  h^(z'_sa)  / C1^(z'_a) = C
-            Dq*ell + ((z'_w2 - z'_an) mod ell) = t*chal + D  in the integers
+    (vii) output the signature sig = (c2, t, chal, ell, Aq, Bq, Cq, Dq, z')
 
 
-### Signature ###
 
-We now convert the above ZKPK into a signature using the Fiat-Shamir heuristic.
+* Verify(c1, m, sig):
+	verify that sig is a valid Schnorr signature using 
+	public key c1 on the message (m, c1, c2).
 
-The public input to the signer is (G, g, h, C1) and a message M.
-The private input to the signer is (p, q, s).
-
-The public input to the verifier is (G, g, h, C1, C2, t), a message M, and a signature.
-
-Protocol:
-* Signer does the following:
-    (1) generates t, w, a, s1, C2 per their definitions, above.
-
-    (2) Computes A, B, C, D as described in [PS1], above.
-
-    (3) Computes
-            PRNG_Key = Hash(G, g, h, C1, C2, t, A, B, C, D, M)
-
-    (4) Uses a PRNG seeded with PRNG_Key to generate chal and ell as described in [VS1].
-
-    (5) Computes Aq, Bq, Cq, Dq, z' as described in [PS2], above.
-
-    (6) Outputs public values (C2, t) and signature (chal, ell, Aq, Bq, Cq, Dq, z')
-
-* Verifier does the following:
-    (1) Computes
-            A = Aq^ell g^(z'_w)  h^(z'_s1)  / C2^(chal)
-            B = Bq^ell g^(z'_w2) h^(z'_s1w) / C2^(z'_w)
-            C = Cq^ell g^(z'_an) h^(z'_sa)  / C1^(z'_a)
+    (1) Compute
+            A = Aq^ell g^(z'_w)  h^(z'_s1)  / c2^(chal)
+            B = Bq^ell g^(z'_w2) h^(z'_s1w) / c2^(z'_w)
+            C = Cq^ell g^(z'_an) h^(z'_sa)  / c1^(z'_a)
             D = Dq * ell + ((z'_w2 - z'_an) mod ell) - t * chal
-            PRNG_key = Hash(G, g, h, C1, C2, t, A, B, C, D, M)
+            PRNG_key = Hash(G, g, h, c1, c2, t, A, B, C, D, M)
 
-    (2) Uses a PRNG seeded with PRNG_Key to generate chal' and ell' as described in [VS1].
+    (2) Use a PRNG seeded with PRNG_Key to generate chal' and ell' 
+    	as described in step (iii) and (iv) of sign.
 
-    (3) Accepts iff chal' == chal and ell' == ell.
+	note:  since ell is included in the signature, the verifier
+	       does not need to search for a prime, but can instead
+	       verify that the given ell is prime and is not too far
+	       from the base starting point of the prime search. 
+
+    (3) Accept iff chal' == chal and ell' == ell.
+
+
+ 
 
 ### Comments ###
 
-1. There is a seemingly simpler method to prove that one knows the factorization of
-   n, namely, prove that one knows p such that p divides n.
+1. There is a seemingly simpler method to prove that one knows the
+   factorization of n, namely, prove that one knows p such that p
+   divides n.  That is, instead of committing to "w" we would commit
+   to "p" and then prove that the committed value divides n. But we
+   would also need to prove that the committed factor is not one of
+   {1, -1, n, -n}, and that will result in a longer proof.
 
-   That is, instead of committing to "w" we would commit to "p" and then prove that
-   the committed value divides n. But we would also need to prove that the committed
-   factor is not one of {1, -1, n, -n}, and that will result in a longer proof.
-
-2. RSAGroupOps implements the quotient group (Z/n)/{1,-1}, representing elements as
-   |x| = min(x, n - x). This is because the proof method requires that no one knows
-   an element of low order other than the identity in the group of unknown order.
-   But for Z/n, -1 is such an element. By quotienting out {1,-1}, -1 becomes the
-   identity (since min(n - 1, (n + 1) mod n) == 1).
-
-
-#####################
-# "Simple" protocol #
-#####################
-
-- Let G be a group of unknown order with no known low-order elements.
-
-- Let g,h in G be two generators with an unknown discrete log relation.
-
-- Let pk = (n, e) be an RSA public key with modulus n = p*q (unrelated to the group G)
-  and public exponent e.
-
-- let s be a random integer less than n.
-
-* public data:
-    (1) C1 = g^n h^s in G
-    (2) C2 = RSAEncrypt(pk, s), i.e., an RSA encryption of s to pk (say, using RSA-OAEP)
-
-* private data: n, s
-
-Informally, if we assume that C2 is an encryption of the opening s to C1 under the public key
-pk, a convincing proof of knowledge of C1's opening implies that the prover can decrypt C2.
-(Of course, this does not hold if C2 is dishonestly generated or if the prover learns s other
-than by decrypting C2.)
-
-Protocol:
-* Prover does the following:
-    (1) choose two random 2048-bit integers r_n, r_s
-
-    (2) compute A = g^(r_n) h^(r_s)
-
-    (3) send A to the verifier
-
-* Verifier does the following:
-    (1) choose a random challenge chal in {0,1}^128
-
-    (2) choose a random prime ell in {0,1}^128
-
-* Prover does the following:
-    (1) decrypt C2 using secret key to reveal s
-
-    (2) compute the integer vector
-        z = chal * (n, s) + (r_n, r_s)
-
-    (3) compute  (here  x // y  is the integer quotient of x divided by y)
-        Aq = g^(z_n  // ell)  h^(z_s  // ell)
-
-    (4) send Aq, z' = (z mod ell) = (z_n mod ell, z_s mod ell)
-
-* Verifier accepts iff
-    Aq^ell g^(z'_n) h^(z'_s) = A C1^chal
+2. RSAGroupOps implements the quotient group (Z/n)/{1,-1},
+   representing elements as |x| = min(x, n - x). This is because the
+   proof method requires that no one knows an element of low order
+   other than the identity in the group of unknown order.  But for
+   Z/n, -1 is such an element. By quotienting out {1,-1}, -1 becomes
+   the identity (since min(n - 1, (n + 1) mod n) == 1).
 
 
-To convert this to a "signature" on a message M, apply the Fiat-Shamir heuristic as above:
-
-* Signer does the following:
-    (1) compute A as described above
-
-    (2) Compute PRNG_Key = Hash(G, g, h, C1, C2, A, M)
-
-    (3) Use a PRNG seeded with PRNG_Key to generate chal and ell as described above.
-
-    (4) Compute Aq, z' as described above.
-
-    (5) output signature (chal, ell, Aq, z')
-
-* Verifier does the following
-    (1) Compute
-        A = Aq^ell g^(z'_n) h^(z'_s) / C1^chal
-        PRNG_Key = Hash(G, g, h, C1, C2, A, M)
-
-    (2) Use a PRNG seeded with PRNG_Key to generate chal' and ell' as described above.
-
-    (3) Accept iff chal' == chal and ell' == ell.
