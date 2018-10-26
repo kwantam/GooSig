@@ -8,55 +8,60 @@
 
 * SendTokens(pk):   to send tokens to an RSA public key pk=(n,e) do:
   step 1:  generate a random 256-bit s' and set  s = H(s').
-       	   	    Here H is a hash function that outputs a 2048-bit integer.
-  step 2:  output  (c0, c1)  where
-		   c0 = RSAencrypt(pk, s')  in Z_n
-		   c1 = g^n * h^s  in G
+           Here H is a hash function that outputs a 2048-bit integer.
 
-  note: as described, the magnitude of c2 leaks information about n.
-	Instead of simply reducing mod n, the algorithm must do the following:
-        	repeat: 
-			- choose a random r in {0,1,...,2^4104//n} 
-			- compute  c2 = (s^e mod n) + r*n  in Z
-		until  (c2 < 2^4104)
-		output c2 in Z
-	this process ensures that c2 is uniform in {0,1,...,2^4104-1}
-	and is independent of n, as long as n is at most 4096 bits.
+  step 2:  output  (C0, C1)  where
+           C0 = RSAencrypt(pk, s')  in Z_n
+           C1 = g^n * h^s  in G
 
-  another note: while c1 is on the blockchain, c0 can be off chain.
-        There is a public association between c0 and pk (e.g., via a hash
-        table), so that the owner of pk can easily find c0.  One can
-        include H(c1) in the plaintext encrypted in c0 to help the owner
-        of pk quickly find c1.
+  note: as described, the magnitude of C0 leaks information about n.
+    Instead of simply reducing mod n, the algorithm must do the following:
+        repeat:
+            - choose a random r in {0,1,...,2^4104//n}
+            - compute  C0 = (s^e mod n) + r*n  in Z
+        until  (C0 < 2^4104)
+        output C0 in Z
+    this process ensures that C0 is uniform in {0,1,...,2^4104-1}
+    and is independent of n, as long as n is at most 4096 bits.
+
+  another note: while C1 is on the blockchain, C0 can be off chain.
+        There is a public association between C0 and pk (e.g., via a hash
+        table), so that the owner of pk can easily find C0.  One can
+        include H(C1) in the plaintext encrypted in C0 to help the owner
+        of pk quickly find C1.
 
 
-* Sign(sk, (c0,c1), m):  to withdraw the funds associated with (c0,c1) 
-	by signing a message m using the RSA secret key sk do:
-  step 1:  Use sk to decrypt c0 and obtain s'.  Compute s = H(s').
-           Then  c1 = g^n * h^s in G.
+* Sign(sk, (C0,C1), m):  to withdraw the funds associated with (C0,C1)
+  by signing a message m using the RSA secret key sk do:
+
+  step 1:  Use sk to decrypt C0 and obtain s'.  Compute s = H(s').
+           Then  C1 = g^n * h^s in G.
+
   step 2:  find a prime 2 <= t <= 1000  s.t. t is a quadratic residue mod n.
-  step 3:  find integers (w,a) such that   w^2 = t + a*n   
-       	   		 (i.e. w is sqrt(t) mod n)
-  step 4:  choose a random 2048-bit integer s1 and compute
-       	   	  c2 = g^w * h^(s1) in G  
 
-  With (c2, t) public, the computed signature is a 
-  signature of knowledge of integers (n, w, a, s, s1) where 
-    (1)  c1 = g^n h^s in G,
-    (2)  c2 = g^w h^(s1) in G,
+  step 3:  find integers (w,a) such that   w^2 = t + a*n
+           (i.e. w is sqrt(t) mod n)
+
+  step 4:  choose a random 2048-bit integer s1 and compute
+           C2 = g^w * h^(s1) in G
+
+  With (C2, t) public, the computed signature is a
+  signature of knowledge of integers (n, w, a, s, s1) where
+    (1)  C1 = g^n h^s in G,
+    (2)  C2 = g^w h^(s1) in G,
     (3)  w^2 = t + a*n.
 
   The ZKPK works by proving knowledge of seven integers
       w, w2, s1, a, an, s1w, sa
   satisfying:
-     c2 = g^w h^(s1)
-     g^(w2) h^(s1w) = c2^w
-     g^(an) h^(sa) = c1^a
+     C2 = g^w h^(s1)
+     g^(w2) h^(s1w) = C2^w
+     g^(an) h^(sa) = C1^a
      w2 = t + an
 
   Concretely:
-    (i) choose seven random 2048-bit integers   
-    	       r_w, r_w2, r_s1, r_a, r_an, r_s1w, r_sa
+    (i) choose seven random 2048-bit integers
+            r_w, r_w2, r_s1, r_a, r_an, r_s1w, r_sa
 
     (ii) compute
             A = g^(r_w)  h^(r_s1)
@@ -65,17 +70,17 @@
             D = r_w2 - r_an   in the integers
 
     (iii) computes
-            PRNG_Key = Hash(m, G, g, h, c1, c2, t, A, B, C, D)
+            PRNG_Key = Hash(m, G, g, h, C1, C2, t, A, B, C, D)
 
-    (iv) Use a PRNG seeded with PRNG_Key to generate a random 128-bit chal 
-    	 and a random 128-bit prime ell.
-	 note:  need to check if a Miller-Rabin pseudoprime is sufficient.
+    (iv) Use a PRNG seeded with PRNG_Key to generate a random 128-bit chal
+         and a random 128-bit prime ell.
+     note:  need to check if a Miller-Rabin pseudoprime is sufficient.
 
     (v) compute the integer vector
-            z = chal*(w, w2, s1, a, an, s1w, sa) + 
-	      		 (r_w, r_w2, r_s1, r_a, r_an, r_s1w, r_sa)  in Z^7
+            z = chal*(w, w2, s1, a, an, s1w, sa) +
+                   (r_w, r_w2, r_s1, r_a, r_an, r_s1w, r_sa)  in Z^7
         let z = (z_w, z_w2, z_s1, z_a, z_an, z_s1w, z_sa)
-   	and z' = (z mod ell) = (z_w mod ell, z_w2 mod ell, ..., z_sa mod ell) \in Z^7
+       and z' = (z mod ell) = (z_w mod ell, z_w2 mod ell, ..., z_sa mod ell) \in Z^7
 
     (vi) compute  (here  x // y  is the integer quotient of x divided by y)
             Aq = g^(z_w  // ell)  h^(z_s1  // ell) in G
@@ -83,33 +88,33 @@
             Cq = g^(z_an // ell)  h^(z_sa  // ell)  /  C1^(z_a // ell) in G
             Dq = (z_w2 - z_an) // \ell   in the integers
 
-    (vii) output the signature sig = (c2, t, chal, ell, Aq, Bq, Cq, Dq, z')
+    (vii) output the signature sig = (C2, t, chal, ell, Aq, Bq, Cq, Dq, z')
 
 
 
-* Verify(c1, m, sig):
-	verify that sig is a valid Schnorr signature using 
-	public key c1 on the message (m, c1, c2).
+* Verify(C1, m, sig):
+    verify that sig is a valid Schnorr signature using
+    public key C1 on the message (m, C1, C2).
 
     (1) Compute
-            A = Aq^ell g^(z'_w)  h^(z'_s1)  / c2^(chal)
-            B = Bq^ell g^(z'_w2) h^(z'_s1w) / c2^(z'_w)
-            C = Cq^ell g^(z'_an) h^(z'_sa)  / c1^(z'_a)
+            A = Aq^ell g^(z'_w)  h^(z'_s1)  / C2^(chal)
+            B = Bq^ell g^(z'_w2) h^(z'_s1w) / C2^(z'_w)
+            C = Cq^ell g^(z'_an) h^(z'_sa)  / C1^(z'_a)
             D = Dq * ell + ((z'_w2 - z'_an) mod ell) - t * chal
-            PRNG_key = Hash(G, g, h, c1, c2, t, A, B, C, D, M)
+            PRNG_key = Hash(G, g, h, C1, C2, t, A, B, C, D, M)
 
-    (2) Use a PRNG seeded with PRNG_Key to generate chal' and ell' 
-    	as described in step (iii) and (iv) of sign.
+    (2) Use a PRNG seeded with PRNG_Key to generate chal' and ell'
+        as described in step (iii) and (iv) of sign.
 
-	note:  since ell is included in the signature, the verifier
-	       does not need to search for a prime, but can instead
-	       verify that the given ell is prime and is not too far
-	       from the base starting point of the prime search. 
+    note:  since ell is included in the signature, the verifier
+           does not need to search for a prime, but can instead
+           verify that the given ell is prime and is not too far
+           from the base starting point of the prime search.
 
     (3) Accept iff chal' == chal and ell' == ell.
 
 
- 
+
 
 ### Comments ###
 
@@ -126,5 +131,3 @@
    other than the identity in the group of unknown order.  But for
    Z/n, -1 is such an element. By quotienting out {1,-1}, -1 becomes
    the identity (since min(n - 1, (n + 1) mod n) == 1).
-
-
