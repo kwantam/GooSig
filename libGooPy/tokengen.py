@@ -2,6 +2,8 @@
 #
 # (C) 2018 Dan Boneh, Riad S. Wahby <rsw@cs.stanford.edu>
 
+import hashlib
+
 from libGooPy.consts import Grsa2048
 from libGooPy.defs import Defs
 import libGooPy.group_ops as lgops
@@ -20,9 +22,10 @@ class GooSigTokGen(object):
 
         # the challenge: a commitment to the RSA modulus
         C1 = self.gops.reduce(self.gops.powgh(rsapubkey.n, s))
+        hC1 = int(hashlib.sha256(str(C1).encode("utf-8")).hexdigest(), 16)
 
-        # s_prime, encrypted to the pubkey
-        C0_pre = rsapubkey.encrypt(s_prime)
+        # (Hash(C1) || s_prime), encrypted to the pubkey
+        C0_pre = rsapubkey.encrypt((hC1 << 256) | s_prime)
 
         # make a ciphertext C0 indistinguishable from a random (max_rsa_keysize + 8)-bit integer
         ct_lim = 1 << (Defs.max_rsa_keysize + 8)

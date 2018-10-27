@@ -7,7 +7,7 @@ import libGooPy.primes as lprimes
 import libGooPy.util as lutil
 
 # NOTE AES-CTR is almost certainly faster for most machines, but this approach sticks to the Python stdlib
-class _HashPRNG(object):
+class HashPRNG(object):
     def __init__(self, prng):
         self.prng = prng
         self.rnum = 0
@@ -54,7 +54,7 @@ class _HashPRNG(object):
         return cls(new_prng)
 
 def fs_chal(ver_only, *args):
-    fs_hash_prng = _HashPRNG.new(*args)
+    fs_hash_prng = HashPRNG.new(*args)
 
     chal = fs_hash_prng.getrandbits(Defs.chalbits)
 
@@ -67,4 +67,4 @@ def fs_chal(ver_only, *args):
     return (chal, ell)
 
 def expand_sprime(s_prime):
-    return _HashPRNG.new(s_prime).getrandbits(Defs.rand_exponent_size)
+    return HashPRNG.new(s_prime).getrandbits(Defs.rand_exponent_size)

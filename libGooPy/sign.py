@@ -2,6 +2,7 @@
 #
 # (C) 2018 Dan Boneh, Riad S. Wahby <rsw@cs.stanford.edu>
 
+import hashlib
 import sys
 
 import libGooPy.group_ops as lgops
@@ -23,9 +24,12 @@ class GooSigSigner(object):
         self.gops = gops
 
     def sign(self, C0, C1, msg):
-        s_prime = self.rsakey.decrypt(C0)
+        C0dec = self.rsakey.decrypt(C0)
+        s_prime = C0dec & ((1 << 256) - 1)
+        hC1 = C0dec >> 256
         s = lprng.expand_sprime(s_prime)
         assert C1 == self.gops.reduce(self.gops.powgh(self.rsakey.n, s)), "C1 does not appear to commit to our RSA modulus with opening s"
+        assert hC1 == int(hashlib.sha256(str(C1).encode("utf-8")).hexdigest(), 16)
 
         ###
         ### Preliminaries: compute values P needs to run the ZKPOK

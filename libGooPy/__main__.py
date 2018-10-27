@@ -24,6 +24,7 @@ def main(run_submodules, nreps):
     if run_submodules:
         lutil.main(nreps)
         lg.main(nreps)
+        lrsa.main(nreps)
 
     # reuse Gops throughout. Notice that you can reuse gops for different
     # Signer modulus as long as the *size* of the Signer's modulus is no
