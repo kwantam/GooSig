@@ -65,16 +65,17 @@ def main(run_submodules, nreps):
 
         res = [None] * len(pv_times)
         for (idx, (msg, gops_p, gops_v)) in enumerate(pv_expts):
-            # random Signer modulus
+            ## create a GooSig for a random Signer key
             (p, q) = lutil.rand.sample(pv_plsts[idx % 2], 2)
-            rsakey = lrsa.RSAKey(p, q)
+            rsakey = lrsa.RSAKey(p, q)              # the Signer's private key
+            rsapubkey = rsakey.get_public_key()     # the Signer's public key
             gen = GooSigTokGen(gops_p)
             prv = GooSigSigner(rsakey, gops_p)
             ver = GooSigVerifier(gops_v)
 
             # generate the challenge token
             start_time = time.time()
-            (C0, C1) = gen.send_tokens(rsakey)
+            (C0, C1) = gen.send_tokens(rsapubkey)
             stop_time = time.time()
             pv_times[idx][0].append(stop_time - start_time)
 
