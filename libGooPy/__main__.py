@@ -81,7 +81,8 @@ def main(run_submodules, nreps):
 
             # generate the signature
             start_time = time.time()
-            (C2, t, sigma) = prv.sign(C0, C1, msg)
+            ## UPDATE 2019 Jan 06: unpack C3 from sign()'s return value; sigma also contains one new element
+            (C2, C3, t, sigma) = prv.sign(C0, C1, msg)
             stop_time = time.time()
             pv_times[idx][1].append(stop_time - start_time)
 

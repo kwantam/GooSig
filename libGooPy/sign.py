@@ -50,19 +50,27 @@ class GooSigSigner(object):
         s1 = self.gops.rand_scalar()
         C2 = self.gops.reduce(self.gops.powgh(w, s1))
 
+        ## UPDATE 2019 Jan 06: commit to value of a with randomness s2
+        # commitment to a
+        s2 = self.gops.rand_scalar()
+        C3 = self.gops.reduce(self.gops.powgh(a, s2))
+
         # inverses of C1 and C2
         (C1Inv, C2Inv) = self.gops.inv2(C1, C2)
 
         ###
         ### P's first message: commit to randomness
         ###
+        ## UPDATE 2019 Jan 06: added r_s2 to P's randomness
         # P's randomness (except for r_s1; see "V's message", below)
-        (r_w, r_w2, r_a, r_an, r_s1w, r_sa) = ( self.gops.rand_scalar() for _ in range(0, 6) )
+        (r_w, r_w2, r_a, r_an, r_s1w, r_sa, r_s2) = ( self.gops.rand_scalar() for _ in range(0, 7) )
 
+        ## UPDATE 2019 Jan 06: (B, C, D) renamed to (C, D, E); new group element B added
         # P's first message (except for A; see "V's message", below)
-        B = self.gops.reduce(self.gops.mul(self.gops.pow(C2Inv, C2, r_w), self.gops.powgh(r_w2, r_s1w)))
-        C = self.gops.reduce(self.gops.mul(self.gops.pow(C1Inv, C1, r_a), self.gops.powgh(r_an, r_sa)))
-        D = r_w2 - r_an
+        B = self.gops.reduce(self.gops.powgh(r_a, r_s2))
+        C = self.gops.reduce(self.gops.mul(self.gops.pow(C2Inv, C2, r_w), self.gops.powgh(r_w2, r_s1w)))
+        D = self.gops.reduce(self.gops.mul(self.gops.pow(C1Inv, C1, r_a), self.gops.powgh(r_an, r_sa)))
+        E = r_w2 - r_an
 
         ###
         ### V's message: random challenge and random prime
@@ -74,12 +82,14 @@ class GooSigSigner(object):
             #      Just pick a new r_s1, which only requires re-computing A.
             r_s1 = self.gops.rand_scalar()
             A = self.gops.reduce(self.gops.powgh(r_w, r_s1))
-            (chal, ell) = lprng.fs_chal(False, self.gops.desc, C1, C2, t, A, B, C, D, msg)
+            ## UPDATE 2019 Jan 06: C3, E added as inputs to the hash function
+            (chal, ell) = lprng.fs_chal(False, self.gops.desc, C1, C2, C3, t, A, B, C, D, E, msg)
 
         ###
         ### P's second message: compute quotient message
         ###
-        # compute z' = c*(w, w2, s1, a, an, s1w, sa) + (r_w, r_w2, r_s1, r_a, r_an, r_s1w, r_sa)
+        ## UPDATE 2019 Jan 06: z_s2 added to z
+        # compute z = c*(w, w2, s1, a, an, s1w, sa, s2) + (r_w, r_w2, r_s1, r_a, r_an, r_s1w, r_sa, r_s2)
         z_w = chal * w + r_w
         z_w2 = chal * w * w + r_w2
         z_s1 = chal * s1 + r_s1
@@ -87,18 +97,23 @@ class GooSigSigner(object):
         z_an = chal * a * self.rsakey.n + r_an
         z_s1w = chal * s1 * w + r_s1w
         z_sa = chal * s * a + r_sa
+        z_s2 = chal * s2 + r_s2
 
+        ## UPDATE 2019 Jan 06: (Bq, Cq, Dq) renamed to (Cq, Dq, Eq); new group element Bq added
         # compute quotient commitments
         Aq = self.gops.reduce(self.gops.powgh(z_w // ell, z_s1 // ell))
-        Bq = self.gops.reduce(self.gops.mul(self.gops.pow(C2Inv, C2, z_w // ell), self.gops.powgh(z_w2 // ell, z_s1w // ell)))
-        Cq = self.gops.reduce(self.gops.mul(self.gops.pow(C1Inv, C2, z_a // ell), self.gops.powgh(z_an // ell, z_sa // ell)))
-        Dq = (z_w2 - z_an) // ell
+        Bq = self.gops.reduce(self.gops.powgh(z_a // ell, z_s2 // ell))
+        Cq = self.gops.reduce(self.gops.mul(self.gops.pow(C2Inv, C2, z_w // ell), self.gops.powgh(z_w2 // ell, z_s1w // ell)))
+        Dq = self.gops.reduce(self.gops.mul(self.gops.pow(C1Inv, C2, z_a // ell), self.gops.powgh(z_an // ell, z_sa // ell)))
+        Eq = (z_w2 - z_an) // ell
 
+        ## UPDATE 2019 Jan 06: z'_s2 added to z'
         # compute z'
-        z_prime = tuple( z_foo % ell for z_foo in (z_w, z_w2, z_s1, z_a, z_an, z_s1w, z_sa) )
+        z_prime = tuple( z_foo % ell for z_foo in (z_w, z_w2, z_s1, z_a, z_an, z_s1w, z_sa, z_s2) )
 
         ###
         ### signature: (chal, ell, Aq, Bq, Cq, Dq, z_prime)
         ###
-        sigma = (chal, ell, Aq, Bq, Cq, Dq, z_prime)
-        return (C2, t, sigma)
+        ## UPDATE 2019 Jan 06: C3, Eq added to the outputs from the sign function
+        sigma = (chal, ell, Aq, Bq, Cq, Dq, Eq, z_prime)
+        return (C2, C3, t, sigma)
