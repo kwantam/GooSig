@@ -57,18 +57,23 @@ class RSAGroupOps(_RandMixin, _WnafMixin, _CombMixin):
         b12Inv = self.inv(b1 * b2)
         return ((b2 * b12Inv) % self.n, (b1 * b12Inv) % self.n)
 
-    def inv5(self, b1, b2, b3, b4, b5):
+    ## UPDATE 2019 Jan 06: inv5 becomes inv7 for updated verifier
+    def inv7(self, b1, b2, b3, b4, b5, b6, b7):
         b12 = (b1 * b2) % self.n
         b34 = (b3 * b4) % self.n
+        b56 = (b5 * b6) % self.n
         b1234 = (b12 * b34) % self.n
-        b12345 = (b1234 * b5) % self.n
+        b123456 = (b1234 * b56) % self.n
+        b1234567 = (b123456 * b7) % self.n
 
-        b12345Inv = self.inv(b12345)
-        b1234Inv = (b12345Inv * b5) % self.n
+        b1234567Inv = self.inv(b1234567)
+        b123456Inv = (b1234567Inv * b7) % self.n
+        b1234Inv = (b123456Inv * b56) % self.n
+        b56Inv = (b123456Inv * b1234) % self.n
         b34Inv = (b1234Inv * b12) % self.n
         b12Inv = (b1234Inv * b34) % self.n
 
-        return ((b12Inv * b2) % self.n, (b12Inv * b1) % self.n, (b34Inv * b4) % self.n, (b34Inv * b3) % self.n, (b12345Inv * b1234) % self.n)
+        return ((b12Inv * b2) % self.n, (b12Inv * b1) % self.n, (b34Inv * b4) % self.n, (b34Inv * b3) % self.n, (b56Inv * b6) % self.n, (b56Inv * b5) % self.n, (b1234567Inv * b123456) % self.n)
 
 class ClassGroupOps(_RandMixin, _WnafMixin, _CombMixin):
     def __init__(self, Gdesc, modbits=None, prng=None):
@@ -237,7 +242,8 @@ class ClassGroupOps(_RandMixin, _WnafMixin, _CombMixin):
     @classmethod
     def invAll(cls, *ms):
         return [ cls.inv(m) for m in ms ]
-    inv2 = inv5 = classmethod(lambda cls, *ms: tuple( cls.inv(m) for m in ms ))
+    ## UPDATE 2019 Jan 06: inv5 becomes inv7 for updated verifier
+    inv2 = inv7 = classmethod(lambda cls, *ms: tuple( cls.inv(m) for m in ms ))
 
 def main(nreps):
     import libGooPy.consts as lc
@@ -292,19 +298,20 @@ def main(nreps):
 
         return (t1pass, t2pass)
 
-    def test_inv5():
-        "inv5,RSA_chal,RSA_rand"
+    ## UPDATE 2019 Jan 06: inv5 becomes inv7 for updated verifier
+    def test_inv7():
+        "inv7,RSA_chal,RSA_rand"
 
-        eVals = tuple( lutil.rand.getrandbits(2048) for _ in range(0, 5) )
-        eInvs = t1.inv5(*eVals)
+        eVals = tuple( lutil.rand.getrandbits(2048) for _ in range(0, 7) )
+        eInvs = t1.inv7(*eVals)
         t1pass = all( t1.reduce((e * eInv) % t1.n) == 1 for (e, eInv) in zip(eVals, eInvs) )
 
-        eInvs = t2.inv5(*eVals)
+        eInvs = t2.inv7(*eVals)
         t2pass = all( t2.reduce((e * eInv) % t2.n) == 1 for (e, eInv) in zip(eVals, eInvs) )
 
         return (t1pass, t2pass)
 
-    tu.run_all_tests(nreps, "group_ops", test_pow2, test_powgh, test_inv2, test_inv5)
+    tu.run_all_tests(nreps, "group_ops", test_pow2, test_powgh, test_inv2, test_inv7)
 
 if __name__ == "__main__":
     try:
