@@ -45,6 +45,9 @@
   step 4:  choose a random 2048-bit integer s1 and compute
            C2 = g^w * h^(s1) in G
 
+  NOTE:  need also to comit to the value a.   See the full writeup in paper.tex.
+
+
   With (C2, t) public, the computed signature is a
   signature of knowledge of integers (n, w, a, s, s1) where
     (1)  C1 = g^n h^s in G,
