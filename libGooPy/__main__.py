@@ -88,7 +88,8 @@ def main(run_submodules, nreps):
 
             # verify the signature
             start_time = time.time()
-            res[idx] = ver.verify((C1, C2, t), msg, sigma)
+            ## UPDATE 2019 Jan 06: verify() also takes C3
+            res[idx] = ver.verify((C1, C2, C3, t), msg, sigma)
             stop_time = time.time()
             pv_times[idx][2].append(stop_time - start_time)
 

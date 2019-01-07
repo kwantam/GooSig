@@ -21,40 +21,47 @@ class GooSigVerifier(object):
         self.gops = gops
 
     def verify(self, pubkey, msg, sigma):
-        (C1, C2, t) = pubkey
-        (chal, ell, Aq, Bq, Cq, Dq, z_prime) = sigma
-        (zp_w, zp_w2, zp_s1, zp_a, zp_an, zp_s1w, zp_sa) = z_prime
+        ## UPDATE 2019 Jan 06: pubkey adds element C3; sigma adds element Eq; z' adds element z'_s2
+        (C1, C2, C3, t) = pubkey
+        (chal, ell, Aq, Bq, Cq, Dq, Eq, z_prime) = sigma
+        (zp_w, zp_w2, zp_s1, zp_a, zp_an, zp_s1w, zp_sa, zp_s2) = z_prime
 
         # make sure that the public key is valid
         if t not in Defs.primes:
             # t must be one of the small primes in our list
             return False
-        if not all( self.gops.is_reduced(b) for b in (C1, C2, Aq, Bq, Cq) ):
+        ## UPDATE 2019 Jan 06: check that C3 and Dq are reduced, too
+        if not all( self.gops.is_reduced(b) for b in (C1, C2, C3, Aq, Bq, Cq, Dq) ):
             # all group elements must be the "canonical" element of the quotient group (Z/n)/{1,-1}
             return False
 
-        # compute inverses of C1, C2, Aq, Bq, Cq
+        ## UPDATE 2019 Jan 06: invert C3 and Dq, too
+        # compute inverses of C1, C2, C3, Aq, Bq, Cq, Dq
         # NOTE: Since we're inverting C1 and C2, we can get inverses of Aq, Bq, Cq for ~free.
         #       This lets us use signed-digit exponentiation below, which is much faster.
-        (C1Inv, C2Inv, AqInv, BqInv, CqInv) = self.gops.inv5(C1, C2, Aq, Bq, Cq)
+        (C1Inv, C2Inv, C3Inv, AqInv, BqInv, CqInv, DqInv) = self.gops.inv7(C1, C2, C3, Aq, Bq, Cq, Dq)
 
         ###
         ### Step 1: reconstruct A, B, C, and D from signature
         ###
+        ## UPDATE 2019 Jan 06: (B, C) renamed to (C, D); compute new group element B
         A = self.gops.reduce(self.gops.mul(self.gops.pow2(Aq, AqInv, ell, C2Inv, C2, chal), self.gops.powgh(zp_w, zp_s1)))
-        B = self.gops.reduce(self.gops.mul(self.gops.pow2(Bq, BqInv, ell, C2Inv, C2, zp_w), self.gops.powgh(zp_w2, zp_s1w)))
-        C = self.gops.reduce(self.gops.mul(self.gops.pow2(Cq, CqInv, ell, C1Inv, C1, zp_a), self.gops.powgh(zp_an, zp_sa)))
+        B = self.gops.reduce(self.gops.mul(self.gops.pow2(Bq, BqInv, ell, C3Inv, C3, chal), self.gops.powgh(zp_a, zp_s2)))
+        C = self.gops.reduce(self.gops.mul(self.gops.pow2(Cq, CqInv, ell, C2Inv, C2, zp_w), self.gops.powgh(zp_w2, zp_s1w)))
+        D = self.gops.reduce(self.gops.mul(self.gops.pow2(Dq, DqInv, ell, C1Inv, C1, zp_a), self.gops.powgh(zp_an, zp_sa)))
 
+        ## UPDATE 2019 Jan 06: D renamed to E
         # make sure sign of (zp_w2 - zp_an) is positive
         zp_w2_m_an = zp_w2 - zp_an
-        D = Dq * ell + zp_w2_m_an - t * chal
+        E = Eq * ell + zp_w2_m_an - t * chal
         if zp_w2_m_an < 0:
-            D += ell
+            E += ell
 
         ###
         ### Step 2: recompute implicitly claimed V message, viz., chal and ell
         ###
-        (chal_out, ell_r_out) = lprng.fs_chal(True, self.gops.desc, C1, C2, t, A, B, C, D, msg)
+        ## UPDATE 2019 Jan 06: C3, E added as inputs to the hash function
+        (chal_out, ell_r_out) = lprng.fs_chal(True, self.gops.desc, C1, C2, C3, t, A, B, C, D, E, msg)
 
         # final checks
         # chal has to match AND 0 <= (ell_r_out - ell) <= elldiff_max AND ell is prime
