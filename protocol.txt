@@ -140,3 +140,23 @@
    other than the identity in the group of unknown order.  But for
    Z/n, -1 is such an element. By quotienting out {1,-1}, -1 becomes
    the identity (since min(n - 1, (n + 1) mod n) == 1).
+
+3. This document was updated January 6, 2019 (commit c5c91e8),
+   adding step 5 in the signing process (C3, a commitment to 'a'),
+   plus extra elements in the signature, etc. Corresponding code
+   updates are marked with a short explanatory comment starting
+   with 'UPDATE: 2019 Jan 06'.
+
+   Note that a verifier for the prior version of the protocol can
+   check a signature for the new version by ignoring the two new
+   group elements in the signature (informally, this is complete
+   but not sound). A new signer can help backward compatibility
+   by serializing the signature such that the new group elements
+   fall at the end. Schematically, write:
+
+       sig_new = (C2, t, chal, ell, Aq, Cq, Dq, Eq, z', C3, Bq)
+
+   Now, if a verifier for the prior version of the protocol ignores
+   the last two elements during deserialization and applies the old
+   verification procedure, it will accept valid signatures made
+   using the new protocol.
