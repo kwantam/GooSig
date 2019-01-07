@@ -86,8 +86,8 @@
     (v) compute the integer vector
             z = chal*(w, w2, s1, a, an, s1w, sa, s2) +
                    (r_w, r_w2, r_s1, r_a, r_an, r_s1w, r_sa, r_s2)  in Z^8
-        let (z_w, z_w2, z_s1, z_a, z_an, z_s1w, z_s, z_s2) = z
-        and z' = (z mod ell) = (z_w mod ell, z_w2 mod ell, ..., z_sa mod ell)  in Z^8
+        let (z_w, z_w2, z_s1, z_a, z_an, z_s1w, z_sa, z_s2) = z
+        and z' = (z mod ell) = (z_w mod ell, z_w2 mod ell, ..., z_s2 mod ell)  in Z^8
 
     (vi) compute  (here  x // y  is the integer quotient of x divided by y)
             Aq = g^(z_w  // ell)  h^(z_s1  // ell) in G
