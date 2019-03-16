@@ -65,7 +65,7 @@
      w2 = t + an
 
   Concretely:
-    (i) choose seven random 2048-bit integers
+    (i) choose eight random 2048-bit integers
             r_w, r_w2, r_s1, r_a, r_an, r_s1w, r_sa, r_s2
 
     (ii) compute
