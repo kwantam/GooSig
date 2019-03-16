@@ -35,13 +35,18 @@ class GooSigSigner(object):
         ### Preliminaries: compute values P needs to run the ZKPOK
         ###
         # find t
+        ## UPDATE 2019 Mar 15: Choose a random t, not the smallest.
         t = None
-        for t in Defs.primes:
+        for idx in range(0, len(Defs.primes)):
+            # partial in-place Fisher-Yates shuffle to choose random t
+            r = lutil.rand.randint(0, len(Defs.primes) - idx - 1)
+            (Defs.primes[idx], Defs.primes[r + idx]) = (Defs.primes[r + idx], Defs.primes[idx])
+            t = Defs.primes[idx]
             w = lutil.sqrt_modn(t, self.rsakey.p, self.rsakey.q)
             if w is not None:
                 break
         if w is None or t is None:
-            RuntimeError("did not find a prime quadratic residue less than 1000 mod N!")
+            RuntimeError("did not find a prime quadratic residue mod N!")
 
         a = (w**2 - t) // self.rsakey.n
         assert a * self.rsakey.n == w**2 - t, "w^2 - t was not divisible by N!"
