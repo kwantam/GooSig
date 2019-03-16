@@ -39,7 +39,7 @@ class GooSigSigner(object):
         t = None
         for idx in range(0, len(Defs.primes)):
             # partial in-place Fisher-Yates shuffle to choose random t
-            r = lutil.rand.randint(0, len(Defs.primes) - idx - 1)
+            r = lutil.rand.randint(0, len(Defs.primes) - idx - 1)   # NOTE: randint() is inclusive of endpoints!
             (Defs.primes[idx], Defs.primes[r + idx]) = (Defs.primes[r + idx], Defs.primes[idx])
             t = Defs.primes[idx]
             w = lutil.sqrt_modn(t, self.rsakey.p, self.rsakey.q)
