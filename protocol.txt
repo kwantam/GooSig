@@ -37,7 +37,7 @@
   step 1:  Use sk to decrypt C0 and obtain s'.  Compute s = H(s').
            Then  C1 = g^n * h^s in G.
 
-  step 2:  find a prime 2 <= t <= 1000  s.t. t is a quadratic residue mod n.
+  step 2:  choose a random prime 2 <= t <= 1000  s.t. t is a quadratic residue mod n.
 
   step 3:  find integers (w,a) such that   w^2 = t + a*n
            (i.e. w is sqrt(t) mod n)
