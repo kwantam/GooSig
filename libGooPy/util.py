@@ -197,7 +197,7 @@ def overrides(interface_class):
     return overrider
 
 def main(nreps):
-    import libGooPy.test_util as tu
+    import libGooPy.test_util as tu     # pylint: disable=bad-option-value,import-outside-toplevel
     (p, q) = rand.sample(tu.primes_2048, 2)
     n = p * q
 

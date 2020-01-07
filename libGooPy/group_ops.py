@@ -246,8 +246,8 @@ class ClassGroupOps(_RandMixin, _WnafMixin, _CombMixin):
     inv2 = inv7 = classmethod(lambda cls, *ms: tuple( cls.inv(m) for m in ms ))
 
 def main(nreps):
-    import libGooPy.consts as lc
-    import libGooPy.test_util as tu
+    import libGooPy.consts as lc        # pylint: disable=bad-option-value,import-outside-toplevel
+    import libGooPy.test_util as tu     # pylint: disable=bad-option-value,import-outside-toplevel
 
     # test on random RSA modulus
     (p, q) = lutil.rand.sample(tu.primes_1024, 2)

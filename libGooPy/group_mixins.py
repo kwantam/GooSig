@@ -87,7 +87,7 @@ class _CombPrecomp(list):
                 nshifts = bits_per_window // adds_per_shift
 
                 _gen_comb_result(nshifts, adds_per_shift, points_per_add, bits_per_window)
-                _gen_comb_result(adds_per_shift, nshifts, points_per_add, bits_per_window)
+                _gen_comb_result(adds_per_shift, nshifts, points_per_add, bits_per_window)  # pylint: disable=bad-option-value,arguments-out-of-order
 
         ret_all = []
         ret = None

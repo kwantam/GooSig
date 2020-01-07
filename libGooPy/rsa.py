@@ -103,7 +103,7 @@ class RSAKey(RSAPubKey):
         return data
 
 def main(nreps):
-    import libGooPy.test_util as tu
+    import libGooPy.test_util as tu     # pylint: disable=bad-option-value,import-outside-toplevel
 
     def test_endec():
         "RSA endec,RSA2048,RSA4096"
