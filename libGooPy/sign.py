@@ -81,7 +81,8 @@ class GooSigSigner(object):
         ### V's message: random challenge and random prime
         ###
         ell = None
-        while ell is None or ell.bit_length() != 128:
+        ## UPDATE 2020 Jan 07: use Defs.ellbits for length of ell rather than hard coding
+        while ell is None or ell.bit_length() < Defs.ellbits - 1:
             # randomize the signature until Fiat-Shamir returns an admissable ell
             # NOTE it's not necessary to re-start the whole signature!
             #      Just pick a new r_s1, which only requires re-computing A.

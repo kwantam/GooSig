@@ -57,12 +57,15 @@ def fs_chal(ver_only, *args):
     fs_hash_prng = HashPRNG.new(*args)
 
     chal = fs_hash_prng.getrandbits(Defs.chalbits)
+    ## UPDATE 2020 Jan 07: increase size of ell. See note in defs.py.
+    ell_r = fs_hash_prng.getrandbits(Defs.ellbits)
 
     if ver_only:
-        ell = fs_hash_prng.getrandbits(Defs.chalbits)
-    if not ver_only:
+        # for verifier, don't call next_prime on ell_r, just return ell_r
+        ell = ell_r
+    else:
         # for prover, call next_prime on ell_r to get ell
-        ell = lprimes.next_prime(fs_hash_prng.getrandbits(Defs.chalbits), Defs.elldiff_max)
+        ell = lprimes.next_prime(ell_r, Defs.elldiff_max)
 
     return (chal, ell)
 
