@@ -44,8 +44,8 @@ def main(run_submodules, nreps):
     gops_c2_v = lg.ClassGroupOps(lc.Ggoo2048, None)     # 2048-bit BQF GoUO (verification)
     # 1024-bit BQF discriminant
     gops_c1_2_p = lg.ClassGroupOps(lc.Ggoo1024, 2048)   # 1024-bit BQF GoUO, 2048-bit Signer key
-    gops_c1_4_p = lg.ClassGroupOps(lc.Ggoo1024, 4096)   # 1024-bit BQF GoUO, 2048-bit Signer key
-    gops_c1_v = lg.ClassGroupOps(lc.Ggoo1024, None)     # 1024-bit BQF GoUO, 4096-bit Signer key
+    gops_c1_4_p = lg.ClassGroupOps(lc.Ggoo1024, 4096)   # 1024-bit BQF GoUO, 4096-bit Signer key
+    gops_c1_v = lg.ClassGroupOps(lc.Ggoo1024, None)     # 1024-bit BQF GoUO (verification)
 
     # measure times
     pv_expts = [ ("4096-bit RSA GoUO, 2048-bit Signer PK", gops_4_2_p, gops_4_v)
