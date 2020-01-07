@@ -79,9 +79,9 @@
             PRNG_Key = Hash(G, g, h, C1, C2, C3, t, A, B, C, D, E, m)
 
     (iv) Use a PRNG seeded with PRNG_Key to generate a random 128-bit chal
-         and a random 136-bit prime ell.
+         and a random 264-bit prime ell.
      note:  need to check if a Miller-Rabin pseudoprime is sufficient.
-     note: ell is a 136-bit prime because there are about 2^128 primes less than 2^136
+     note: ell is a 264-bit prime because there are about 2^256 primes less than 2^264
 
     (v) compute the integer vector
             z = chal*(w, w2, s1, a, an, s1w, sa, s2) +
@@ -145,7 +145,7 @@
    adding step 5 in the signing process (C3, a commitment to 'a'),
    plus extra elements in the signature, etc. Corresponding code
    updates are marked with a short explanatory comment starting
-   with 'UPDATE: 2019 Jan 06'.
+   with 'UPDATE 2019 Jan 06'.
 
    Note that a verifier for the prior version of the protocol can
    check a signature for the new version by ignoring the two new
@@ -160,3 +160,16 @@
    the last two elements during deserialization and applies the old
    verification procedure, it will accept valid signatures made
    using the new protocol.
+
+4. This repository was updated January 7, 2020 (commit 364180f),
+   changing the length of the prime challenge ell from 136 bits
+   (i.e., 2^128 possible primes) to 264 bits (i.e., 2^256 possible
+   primes). This addresses security loss that occurs as a result of
+   the Fiat-Shamir transform. For more information on the security
+   loss, see Section 3.3 of
+
+   Boneh, Buenz, Fisch. "A Survey of Two Verifiable Delay Functions."
+   ePrint # 2018/712, https://eprint.iacr.org/2018/712
+
+   Corresponding code updates are marked with a short explanatory
+   comment starting with "UPDATE 2020 Jan 07".
