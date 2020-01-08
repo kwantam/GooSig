@@ -135,7 +135,6 @@ class _CombMixin(object):
             ## UPDATE 2020 Jan 07: ellbits now defines size of exponent for V
             tiny_nbits = Defs.ellbits
             tiny_combspec = _CombPrecomp.gen_opt_combs(tiny_nbits, max_comb_size)
-            print(tiny_combspec)
             self.combs = [(_CombPrecomp(self.g, tiny_combspec, self), _CombPrecomp(self.h, tiny_combspec, self))]
 
     def powgh(self, e1, e2):
